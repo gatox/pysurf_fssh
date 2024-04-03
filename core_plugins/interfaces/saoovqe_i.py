@@ -52,15 +52,26 @@ class INTSAOOVQE(AbinitioBase):
     active_indices = 6, 9 :: ilist
     virtual_indices = 9, 43 :: ilist 
     do_oo_process = True :: str
+    noise = :: str
+    [noise(True)]
+    mean = 0 :: float
+    standar_d = 1.0e-05 :: float 
+    [noise(False)]
+    add_noise = False :: str
     """
     
     tpl = tpl
+
+    noise_settings = {
+        'mean' : 0,
+        'standar_d' : 1.0e-05, 
+    }
 
     # implemented has to be overwritten by the individual classes for the methods
     implemented = ['energy', 'gradient', 'nacs']
 
 
-    def __init__(self, config, atomids, nstates, basis, chg, mult, nelec_active, frozen_indices, active_indices, virtual_indices, do_oo_process):
+    def __init__(self, config, atomids, nstates, basis, chg, mult, nelec_active, frozen_indices, active_indices, virtual_indices, do_oo_process, noise):
         self.molecule = Molecule(atomids, None) 
         self.natoms = len(atomids)
         self.nstates = nstates
@@ -73,6 +84,8 @@ class INTSAOOVQE(AbinitioBase):
         self.virtual_indices = [i for i in range(virtual_indices[0], virtual_indices[1])]
         self.num_qubits = 2 * len(active_indices)
         self.do_oo_process = do_oo_process
+        self._update_settings(config)
+        self.noise = config['noise']
         self.n_mo_optimized = self.virtual_indices[-1] + 1
         self.w_a = 0.5
         self.w_b = 0.5
@@ -81,11 +94,13 @@ class INTSAOOVQE(AbinitioBase):
         self.ucc_ansatz = ["fermionic_SAAD", "fast"][1]
         self.bohr = 0.5291772105638411 
         self.icall = 0
-
         
+    def _update_settings(self, config):
+        self.noise_settings.update({key: value for key, value in config['noise'].items()})
+    
     @classmethod
     def from_config(cls, config, atomids, nstates, nghost_states):
-        return cls(config, atomids, nstates, config['basis'], config['chg'], config['mult'], config['nelec_active'], config['frozen_indices'], config['active_indices'], config['virtual_indices'], config['do_oo_process'])
+        return cls(config, atomids, nstates, config['basis'], config['chg'], config['mult'], config['nelec_active'], config['frozen_indices'], config['active_indices'], config['virtual_indices'], config['do_oo_process'], config['noise'])
 
     
     def get(self, request):
@@ -107,6 +122,15 @@ class INTSAOOVQE(AbinitioBase):
     def _do_saoovqe_ene_grad_nacs(self, state):
         string_geo = self.tpl.render(chg=self.chg, mult=self.mult,
                      mol=self.molecule)
+        if self.noise == "True":
+            noise = True
+            noise_mean = self.noise_settings['mean']
+            noise_sd = self.noise_settings['standar_d'] 
+        else:
+            noise = False
+            noise_mean=None
+            noise_sd=None
+
         saoovqe_class = SAOOVQE(string_geo,
                           self.basis,
                           self.nelec_active,
@@ -119,6 +143,9 @@ class INTSAOOVQE(AbinitioBase):
                           delta=self.delta,
                           print_timings=False, # Use this if you want to compute all the timings...
                           do_oo_process=self.do_oo_process,
+                          add_noise=noise,
+                          noise_mean=noise_mean,
+                          noise_sd=noise_sd,
                           ucc_ansatz=self.ucc_ansatz)
         """Read molecular orbitals after the first timestep"""
         if self.read_mos:
