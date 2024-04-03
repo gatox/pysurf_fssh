@@ -74,6 +74,7 @@ class SetupPropagation(SetupBase):
         #elif self.tsh_method == 'LZ':
         #    RunTrajectory.generate_input(config['prop'], config=lconfig)
         #
+        State.from_questions(config = "prop.inp") 
         if config['n_traj'] == -1:
             ntraj = len(sampling._db)
         else:
@@ -105,6 +106,7 @@ class SetupPropagation(SetupBase):
         #elif self.tsh_method == 'LZ':
         #    initname = os.path.join(foldername, 'init.db')
         #setup new database 
+        initname = os.path.join(foldername, 'sampling.db')
         new_sampling = Sampling.create_db(initname, sampling.info['variables'], sampling.info['dimensions'], sampling.system, sampling.modes, model=sampling.model, sp=True)
         #copy condition to new db
         condition = sampling.get_condition(number)
