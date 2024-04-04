@@ -2,7 +2,6 @@
 PySurf: A Framework for Database Accelerated Quantum Chemistry
 ==============================================================
 
-::
 
      _____          _____                __ 
     |  __ \        / ____|              / _|
@@ -22,8 +21,6 @@ Requirements
     - qctools
 
 Both can be installed by:
-
-::
 
     pip install pycolt qctools
 
@@ -46,8 +43,14 @@ ____________
     - Developer/user friendly
 
 
-Credits
--------
+Documentation:
+--------------
+
+https://pysurf-fssh.readthedocs.io/
+
+
+Credits:
+--------
 
 This work was supported by the Innovational Research Incentives Scheme Vidi 2017 with project number 016.Vidi.189.044, (partly) funded by the Dutch Research Council (NWO).
 
