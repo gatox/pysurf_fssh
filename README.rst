@@ -45,6 +45,10 @@ ____________
     - Light-weight 
     - Developer/user friendly
 
+Documentation:
+____________
+
+https://pysurf-fssh.readthedocs.io/
 
 Credits
 -------
