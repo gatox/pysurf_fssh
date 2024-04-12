@@ -8,10 +8,28 @@ from abc import abstractmethod
 from pysurf.spp import SurfacePointProvider
 from pysurf.database import PySurfDB
 from colt import Colt
+import multiprocessing
 
 """
 Adding parallelization to run trajectories simultaneously and share information
 """
+
+class CoupledTrajectories:
+
+    def __init__(self, n_trajectories, trajectory, shared):
+        self.n_traj = n_trajectories
+        self.traj_i = trajectory
+        self.shared = shared  
+
+    def process_shared_data(self, shared_data):
+
+    def run_coupled(self, run_trajectory):  
+        shared_data = multiprocessing.Array('d', self.n_trajectories)  # Shared memory for trajectory data
+        while multiprocessing.Pool(processes=self.n_trajectories) as pool:
+            pool.starmap(run_trajectory, [(i, shared_data) for i in range(self.n_trajectories)])
+
+        # After all trajectories are complete, process the shared data
+        process_shared_data(shared_data)
 
 class VelocityVerletPropagator:
 
