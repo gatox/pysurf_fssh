@@ -9,6 +9,10 @@ from pysurf.spp import SurfacePointProvider
 from pysurf.database import PySurfDB
 from colt import Colt
 
+"""
+Adding parallelization to run trajectories simultaneously and share information
+"""
+
 class VelocityVerletPropagator:
 
     def __init__(self, state):
