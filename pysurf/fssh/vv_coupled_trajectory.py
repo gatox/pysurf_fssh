@@ -284,6 +284,18 @@ class Propagator:
         finite_difference_grad = ((d_curr + d_two_prev_steps - 2 * d_prev_step) / dt**2)
         return exp((-pi/2.0) * sqrt(abs(d_prev_step)**3 / abs(finite_difference_grad)))
 
+    def probabilities_zn(self, f_1,f_2,v_12,e_t,e_x):
+        """Compute the hopping probability between two electronic states
+           using the Zhu-Nakamura formula
+        """
+        a_par = sqrt(...)
+        b_par = sqrt(...)
+        if f_1*f_2 >0:
+            c_par = abs(b_par**4 +1)
+        else:
+            c_par = abs(b_par**4 -1)
+        return exp((-pi/(4.0*a_par**2)) * sqrt(2 /(b_par**2 + sqrt(abs(c_par)))))
+
     def diag_propagator(self, ene_cou_grad, dt, state):
         c_mch = state.ncoeff
         u_new = ene_cou_grad.u
