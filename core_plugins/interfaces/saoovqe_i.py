@@ -55,7 +55,7 @@ class INTSAOOVQE(AbinitioBase):
     noise = :: str
     [noise(True)]
     mean = 0 :: float
-    standar_d = 1.0e-05 :: float 
+    variance = 1.0e-05 :: float 
     [noise(False)]
     add_noise = False :: str
     """
@@ -64,7 +64,7 @@ class INTSAOOVQE(AbinitioBase):
 
     noise_settings = {
         'mean' : 0,
-        'standar_d' : 1.0e-05, 
+        'variance' : 1.0e-05, 
     }
 
     # implemented has to be overwritten by the individual classes for the methods
@@ -125,7 +125,7 @@ class INTSAOOVQE(AbinitioBase):
         if self.noise == "True":
             noise = True
             noise_mean = self.noise_settings['mean']
-            noise_sd = self.noise_settings['standar_d'] 
+            noise_sd = np.sqrt(self.noise_settings['variance']) 
         else:
             noise = False
             noise_mean=None
