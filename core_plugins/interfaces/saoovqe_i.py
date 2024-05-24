@@ -55,7 +55,7 @@ class INTSAOOVQE(AbinitioBase):
     noise = :: str
     [noise(True)]
     mean = 0 :: float
-    variance = 1.0e-05 :: float 
+    variance = 1.0e-20 :: float 
     [noise(False)]
     add_noise = False :: str
     """
