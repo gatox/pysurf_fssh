@@ -19,7 +19,7 @@ class State(Colt):
     ncoeff = 0.0 1.0 :: flist
     # diagonal probability is not working yet
     prob = tully :: str :: tully, lz, lz_nacs    
-    rescale_vel = momentum :: str :: momentum, nacs 
+    rescale_vel = :: str 
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup 
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
@@ -27,6 +27,14 @@ class State(Colt):
     n_substeps = 10 :: int
     [substeps(false)]
     n_substeps = false :: bool
+    [rescale_vel(momentum)]
+    reduced_kene = :: str
+    [rescale_vel(nacs)]
+    res_nacs = true :: bool
+    [reduced_kene(true)]
+    number_vdf = 1 :: int
+    [reduced_kene(false)]
+    number_vdf = false :: bool
     """
 
     def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):
@@ -48,6 +56,12 @@ class State(Colt):
         self.ncoeff = ncoeff
         self.prob = prob
         self.rescale_vel = rescale_vel
+        if config['rescale_vel'] == "nacs":
+            self.rescale_vel = "nacs"
+        elif config['rescale_vel'] == "momentum":
+            self.rescale_vel = "momentum"
+            if config['rescale_vel']['momentum']['reduced_kene'] == "true":
+                self.reduced_kene = config['rescale_vel']['momentum']['reduced_kene']['number_vdf']
         self.coupling = coupling
         if self.rescale_vel == "nacs":
             if self.coupling in ("wf_overlap, non_coup"):
