@@ -56,6 +56,13 @@ class INTSAOOVQE(AbinitioBase):
     [noise(True)]
     mean = 0 :: float
     variance = 1.0e-20 :: float 
+    noise_energy_after_sa_vqe = True :: str :: True, False
+    noise_before_orb_opt_phase = True :: str :: True, False
+    noise_final_state_resolution = True :: str :: True, False
+    # Not yet implemented noise in vqe_cost_function
+    noise_vqe_cost_function_energy = False :: str
+    noise_rdms_gradient = True :: str :: True, False
+    noise_tdms_nacs = True :: str :: True, False
     [noise(False)]
     add_noise = False :: str
     """
@@ -64,7 +71,13 @@ class INTSAOOVQE(AbinitioBase):
 
     noise_settings = {
         'mean' : 0,
-        'variance' : 1.0e-05, 
+        'variance' : 1.0e-20, 
+        'noise_energy_after_sa_vqe' : True,
+        'noise_before_orb_opt_phase' : True,
+        'noise_final_state_resolution' : True,
+        'noise_vqe_cost_function_energy': False,
+        'noise_rdms_gradient': True,
+        'noise_tdms_nacs': True,
     }
 
     # implemented has to be overwritten by the individual classes for the methods
@@ -93,6 +106,7 @@ class INTSAOOVQE(AbinitioBase):
         self.tell_me = True
         self.ucc_ansatz = ["fermionic_SAAD", "fast"][1]
         self.bohr = 0.5291772105638411 
+        self.initial_param_values = None
         self.icall = 0
         
     def _update_settings(self, config):
@@ -126,10 +140,22 @@ class INTSAOOVQE(AbinitioBase):
             noise = True
             noise_mean = self.noise_settings['mean']
             noise_sd = np.sqrt(self.noise_settings['variance']) 
+            noise_energy_after_sa_vqe = self.noise_settings['noise_energy_after_sa_vqe']
+            noise_before_orb_opt_phase = self.noise_settings['noise_before_orb_opt_phase']
+            noise_final_state_resolution = self.noise_settings['noise_final_state_resolution']
+            noise_vqe_cost_function_energy = self.noise_settings['noise_vqe_cost_function_energy']
+            noise_rdms_gradient = self.noise_settings['noise_rdms_gradient'] 
+            noise_tdms_nacs = self.noise_settings['noise_tdms_nacs']
         else:
             noise = False
             noise_mean=None
             noise_sd=None
+            noise_energy_after_sa_vqe=False
+            noise_before_orb_opt_phase=False
+            noise_final_state_resolution=False
+            noise_vqe_cost_function_energy=False
+            noise_rdms_gradient=False
+            noise_tdms_nacs=False
 
         saoovqe_class = SAOOVQE(string_geo,
                           self.basis,
@@ -146,8 +172,15 @@ class INTSAOOVQE(AbinitioBase):
                           add_noise=noise,
                           noise_mean=noise_mean,
                           noise_sd=noise_sd,
-                          ucc_ansatz=self.ucc_ansatz)
-        """Read molecular orbitals after the first timestep"""
+                          noise_energy_after_sa_vqe=noise_energy_after_sa_vqe,
+                          noise_before_orb_opt_phase=noise_before_orb_opt_phase,
+                          noise_final_state_resolution=noise_final_state_resolution,
+                          noise_vqe_cost_function_energy=noise_vqe_cost_function_energy,
+                          noise_rdms_gradient=noise_rdms_gradient,
+                          noise_tdms_nacs=noise_tdms_nacs,
+                          ucc_ansatz=self.ucc_ansatz,
+                          initial_param_values=self.initial_param_values)
+        """Read molecular orbitals and VQE kernel parameter values after the first timestep"""
         if self.read_mos:
             old_mo = np.loadtxt("mos_save")
             old_ovlp_half = ovlp_half(np.loadtxt("ovlp_save"))
@@ -161,6 +194,8 @@ class INTSAOOVQE(AbinitioBase):
         np.savetxt("mos_save", mos_save)
         ovlp_save = saoovqe_class.psi4_vars['S_ao']
         np.savetxt("ovlp_save", ovlp_save)
+        """Save VQE kernel initial parameter values"""
+        self.initial_param_values = saoovqe_class.param_values
         """Saving energies, gradients and NACs"""
         self.energies = [saoovqe_class.e_a, saoovqe_class.e_b]
         grad = []
