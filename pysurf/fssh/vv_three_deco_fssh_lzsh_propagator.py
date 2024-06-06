@@ -57,35 +57,36 @@ class VelocityVerletPropagator:
             for i,m in enumerate(state.mass):
                 acce[i] = -gradient[i]/m
             return acce
-
+    
     def accelerations_therm(self, state, acce):
         return acce -state.xi*state.vel
 
     def positions(self, state, a_0, dt):
         if state.thermostat:
-            a_ther = accelerations_therm(state, a_0)
+            a_ther = self.accelerations_therm(state, a_0)
             return state.crd + state.vel*dt + 0.5*a_ther*dt**2
         else:
             return state.crd + state.vel*dt + 0.5*a_0*dt**2
 
     def velocities_half(self, state, a_0, dt):
-        a_ther = accelerations_therm(state, a_0)
+        a_ther = self.accelerations_therm(state, a_0)
         return state.vel + 0.5*a_ther*dt
 
     def xi_half(self, state, dt):
         return state.xi + 0.5*state.q_eff*dt*(state.ekin-0.5*(3*state.natoms+1)*state.t_target)
 
     def xi_t_dt(self,state, a_0, dt):
-        vel_05 = velocities_half(state, a_0, dt)
+        vel_05 = self.velocities_half(state, a_0, dt)
         ekin_05 = self.electronic.cal_ekin(state.mass, vel_05) 
-        xi_05 = xi_half(state, dt) 
+        xi_05 = self.xi_half(state, dt) 
         return xi_05 + 0.5*state.q_eff*dt*(ekin_05-0.5*(3*state.natoms+1)*state.t_target)
 
     def velocities(self, state, a_0, a_1, dt):
         if state.thermostat:
-            numerator = velocities_half(state, a_0, dt) + 0.5*dt*a_1
-            denominator = 1+0.5*dt*xi_t_dt(state, a_0, dt)
-            state.xi = xi_t_dt 
+            numerator = self.velocities_half(state, a_0, dt) + 0.5*dt*a_1
+            xi = self.xi_t_dt(state, a_0, dt)
+            denominator = 1+0.5*dt*xi
+            state.xi = xi
             return numerator/denominator
         else:
             return state.vel + 0.5*(a_0 + a_1)*dt 
