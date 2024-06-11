@@ -56,13 +56,13 @@ class INTSAOOVQE(AbinitioBase):
     [noise(True)]
     mean = 0 :: float
     variance = 1.0e-20 :: float 
-    noise_energy_after_sa_vqe = True :: str :: True, False
-    noise_before_orb_opt_phase = True :: str :: True, False
-    noise_final_state_resolution = True :: str :: True, False
+    noise_energy_after_sa_vqe = True :: bool :: True, False
+    noise_before_orb_opt_phase = True :: bool :: True, False
+    noise_final_state_resolution = True :: bool :: True, False
     # Not yet implemented noise in vqe_cost_function
-    noise_vqe_cost_function_energy = False :: str
-    noise_rdms_gradient = True :: str :: True, False
-    noise_tdms_nacs = True :: str :: True, False
+    noise_vqe_cost_function_energy = False :: bool
+    noise_rdms_gradient = True :: bool :: True, False
+    noise_tdms_nacs = True :: bool :: True, False
     [noise(False)]
     add_noise = False :: str
     """
