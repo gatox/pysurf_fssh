@@ -6,7 +6,7 @@ PySurf-FSSH: New Plugin for PySurf to Perform Nonadiabatic Dynamics
    :alt: Schematic description of the code structure
    :width: 700px
 
-The FSSH Plugin is based on the standard FSSH algorithm proposed by Tully plus a decoherence correction to avoid overcoherence and a velocity adjustment to conserve the total energy. A comprehensive using this plugin between Tully’s FSSH and Landau–Zener LZSH to study photoinduced ring-opening of 1,3-cyclohexadiene to 1,3,5-hexatriene at SF-TDDFT level can be found here_.
+The FSSH Plugin is based on the standard FSSH algorithm proposed by Tully plus a decoherence correction to avoid overcoherence and a velocity adjustment to conserve the total energy. A comprehensive comparison using this plugin between Tully’s FSSH and Landau–Zener LZSH to study photoinduced ring-opening of 1,3-cyclohexadiene to 1,3,5-hexatriene at SF-TDDFT level can be found here_.
 
 .. _here: https://pubs.acs.org/doi/10.1021/acs.jctc.4c00012
 
