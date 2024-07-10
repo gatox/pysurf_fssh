@@ -1,6 +1,6 @@
-===================================================================
-PySurf-FSSH: New Plugin for PySurf to Perform Nonadiabatic Dynamics
-===================================================================
+==============================================================================
+PySurf-FSSH: New Plugin for PySurf to Perform Nonadiabatic Dynamics using FSSH
+==============================================================================
 
 .. image:: docs/logo_pysurf_fssh.jpeg
    :alt: Schematic description of the code structure
