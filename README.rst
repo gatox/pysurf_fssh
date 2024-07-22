@@ -38,6 +38,18 @@ ____________
     - Light-weight 
     - Developer/user friendly
 
+Interfaces:
+____________
+
+    - Q-Chem_: TDDFT, SF-TDDFT & EOM-CCSD
+    - OpenMolcas_: SA-CASSCF, XMS-CASPT2 
+    - BAGEL_: XMS-CASPT2
+    - SA-OO-VQE_ (Quantum Algoritm)
+.. _Q-Chem: https://manual.q-chem.com/latest/
+.. _OpenMolcas: https://gitlab.com/Molcas/OpenMolcas
+.. _BAGEL: https://nubakery.org/
+.. _SA-OO-VQE: https://github.com/qc2nl/SAOOVQE
+
 
 Documentation:
 --------------
