@@ -44,7 +44,7 @@ ____________
     - Q-Chem_: TDDFT, SF-TDDFT & EOM-CCSD
     - OpenMolcas_: SA-CASSCF, XMS-CASPT2 
     - BAGEL_: XMS-CASPT2
-    - SA-OO-VQE_ (Quantum Algoritm)
+    - SA-OO-VQE_ (Quantum Algorithm)
 .. _Q-Chem: https://manual.q-chem.com/latest/
 .. _OpenMolcas: https://gitlab.com/Molcas/OpenMolcas
 .. _BAGEL: https://nubakery.org/
