@@ -8,6 +8,28 @@ from abc import abstractmethod
 from pysurf.spp import SurfacePointProvider
 from pysurf.database import PySurfDB
 from colt import Colt
+import multiprocessing
+
+"""
+Adding parallelization to run trajectories simultaneously and share information
+"""
+
+class CoupledTrajectories:
+
+    def __init__(self, n_trajectories, trajectory, shared):
+        self.n_traj = n_trajectories
+        self.traj_i = trajectory
+        self.shared = shared  
+
+    def process_shared_data(self, shared_data):
+
+    def run_coupled(self, run_trajectory):  
+        shared_data = multiprocessing.Array('d', self.n_trajectories)  # Shared memory for trajectory data
+        while multiprocessing.Pool(processes=self.n_trajectories) as pool:
+            pool.starmap(run_trajectory, [(i, shared_data) for i in range(self.n_trajectories)])
+
+        # After all trajectories are complete, process the shared data
+        process_shared_data(shared_data)
 
 class VelocityVerletPropagator:
 
@@ -57,39 +79,12 @@ class VelocityVerletPropagator:
             for i,m in enumerate(state.mass):
                 acce[i] = -gradient[i]/m
             return acce
-    
-    def accelerations_therm(self, state, acce):
-        return acce -state.xi*state.vel
 
     def positions(self, state, a_0, dt):
-        if state.thermostat:
-            a_ther = self.accelerations_therm(state, a_0)
-            return state.crd + state.vel*dt + 0.5*a_ther*dt**2
-        else:
-            return state.crd + state.vel*dt + 0.5*a_0*dt**2
-
-    def velocities_half(self, state, a_0, dt):
-        a_ther = self.accelerations_therm(state, a_0)
-        return state.vel + 0.5*a_ther*dt
-
-    def xi_half(self, state, dt):
-        return state.xi + 0.5*state.q_eff*dt*(state.ekin-0.5*(3*state.natoms+1)*state.t_target)
-
-    def xi_t_dt(self,state, a_0, dt):
-        vel_05 = self.velocities_half(state, a_0, dt)
-        ekin_05 = self.electronic.cal_ekin(state.mass, vel_05) 
-        xi_05 = self.xi_half(state, dt) 
-        return xi_05 + 0.5*state.q_eff*dt*(ekin_05-0.5*(3*state.natoms+1)*state.t_target)
+        return state.crd + state.vel*dt + 0.5*a_0*dt**2
 
     def velocities(self, state, a_0, a_1, dt):
-        if state.thermostat:
-            numerator = self.velocities_half(state, a_0, dt) + 0.5*dt*a_1
-            xi = self.xi_t_dt(state, a_0, dt)
-            denominator = 1+0.5*dt*xi
-            state.xi = xi
-            return numerator/denominator
-        else:
-            return state.vel + 0.5*(a_0 + a_1)*dt 
+        return state.vel + 0.5*(a_0 + a_1)*dt 
 
     def update_state(self, state, acce_new, crd_new, vel_new):
         state.crd = crd_new
@@ -288,6 +283,18 @@ class Propagator:
         """Compute the hopping probability between two electronic states"""
         finite_difference_grad = ((d_curr + d_two_prev_steps - 2 * d_prev_step) / dt**2)
         return exp((-pi/2.0) * sqrt(abs(d_prev_step)**3 / abs(finite_difference_grad)))
+
+    def probabilities_zn(self, f_1,f_2,v_12,e_t,e_x):
+        """Compute the hopping probability between two electronic states
+           using the Zhu-Nakamura formula
+        """
+        a_par = sqrt(...)
+        b_par = sqrt(...)
+        if f_1*f_2 >0:
+            c_par = abs(b_par**4 +1)
+        else:
+            c_par = abs(b_par**4 -1)
+        return exp((-pi/(4.0*a_par**2)) * sqrt(2 /(b_par**2 + sqrt(abs(c_par)))))
 
     def diag_propagator(self, ene_cou_grad, dt, state):
         c_mch = state.ncoeff
@@ -700,8 +707,6 @@ class State(Colt):
     dt = 1.0 :: float
     mdsteps = 40000 :: float
     substeps = :: str 
-    # Nose-Hoover thermostat
-    thermostat = :: str
     # instate is the initial state: 0 = G.S, 1 = E_1, ...
     instate = 1 :: int
     nstates = 2 :: int
@@ -717,18 +722,9 @@ class State(Colt):
     n_substeps = 10 :: int
     [substeps(false)]
     n_substeps = false :: bool
-    [thermostat(true)]
-    # friction coefficient
-    xi = 0.0 :: float
-    # target tempertaure in Kelvin
-    T = 300 :: float    
-    # degrees of freedom 
-    dof = nonlinear :: str :: nonlinear, linear
-    [thermostat(false)]
-    therm = false :: bool
     """
     
-    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps, thermostat):
+    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):
         self.crd = crd
         self.natoms = len(crd)
         self.atomids = atomids
@@ -772,17 +768,6 @@ class State(Colt):
             self.natoms = 1
         elif isinstance(self.mass, ndarray) != True:
             self.natoms = array([self.mass])
-        if config['thermostat'] == "true":
-            self.thermostat = True 
-            self.xi = config['thermostat']['xi']
-            self.dof = config['thermostat']['dof']
-            self.t_target = config['thermostat']['T']*3.166811e-6
-            if self.dof == "nonlinear":
-                self.q_eff = (3*self.natoms-6)*self.t_target*(10*self.dt)**2
-            else:
-                self.q_eff = (3*self.natoms-5)*self.t_target*(10*self.dt)**2
-        else:
-            self.thermostat = False 
 
     @classmethod
     def from_config(cls, config):
@@ -800,8 +785,7 @@ class State(Colt):
         method = config['method']
         decoherence = config['decoherence']
         substeps = config['substeps']
-        thermostat = config['thermostat']
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps, thermostat)  
+        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps)  
 
     @staticmethod
     def read_db(db_file):
@@ -818,8 +802,8 @@ class State(Colt):
         return crd, vel, mass, atomids, model
 
     @classmethod
-    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps, thermostat):
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps, thermostat)
+    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):
+        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps)
 
 class PrintResults:
  
