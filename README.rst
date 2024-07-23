@@ -50,6 +50,11 @@ ____________
 .. _BAGEL: https://nubakery.org/
 .. _SA-OO-VQE: https://github.com/qc2nl/SAOOVQE
 
+Thermostat:
+____________
+
+     - Nose-Hoover_ 
+.. _Nose-Hoover: https://pubs.aip.org/aip/jcp/article/83/8/4069/219065/The-Nose-Hoover-thermostatThe-Nose-Hoover
 
 Documentation:
 --------------
