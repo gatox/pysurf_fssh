@@ -32,9 +32,10 @@ class State(Colt):
     [rescale_vel(nacs)]
     res_nacs = true :: bool
     [reduced_kene(true)]
-    number_vdf = 1 :: int
+    # degrees of freedom 
+    number_vdf = nonlinear :: str :: nonlinear, linear
     [reduced_kene(false)]
-    number_vdf = false :: bool
+    number_vdf = False :: str 
     """
 
     def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):

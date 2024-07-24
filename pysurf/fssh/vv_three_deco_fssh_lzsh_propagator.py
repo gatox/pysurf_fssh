@@ -423,6 +423,11 @@ class RescaleVelocity:
         diff = self.diff_ji(state_new)
         beta = self.beta_ji(state.vel, direct)
         alpha = self.alpha_ji(direct) 
+        if self.rescale_vel == "momentum" and self.reduced_kene == "true":
+            if self.reduced_kene == "nonlinear":
+                beta = beta*(1/sqrt(3*state.natoms-6))
+            else: 
+                beta = beta*(1/sqrt(3*state.natoms-5))
         if (beta**2 + 4*alpha*diff) < 0.0:
             """
             If this condition is satisfied, there is not hopping and 
@@ -693,9 +698,9 @@ class State(Colt):
     [rescale_vel(nacs)]
     res_nacs = true :: bool
     [reduced_kene(true)]
-    number_vdf = 1 :: int
+    number_vdf = nonlinear :: str :: nonlinear, linear
     [reduced_kene(false)]
-    number_vdf = false :: bool
+    number_vdf = False :: str 
     """
     
     def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):
