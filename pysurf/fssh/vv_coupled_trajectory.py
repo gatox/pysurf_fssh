@@ -8,6 +8,28 @@ from abc import abstractmethod
 from pysurf.spp import SurfacePointProvider
 from pysurf.database import PySurfDB
 from colt import Colt
+import multiprocessing
+
+"""
+Adding parallelization to run trajectories simultaneously and share information
+"""
+
+class CoupledTrajectories:
+
+    def __init__(self, n_trajectories, trajectory, shared):
+        self.n_traj = n_trajectories
+        self.traj_i = trajectory
+        self.shared = shared  
+
+    def process_shared_data(self, shared_data):
+
+    def run_coupled(self, run_trajectory):  
+        shared_data = multiprocessing.Array('d', self.n_trajectories)  # Shared memory for trajectory data
+        while multiprocessing.Pool(processes=self.n_trajectories) as pool:
+            pool.starmap(run_trajectory, [(i, shared_data) for i in range(self.n_trajectories)])
+
+        # After all trajectories are complete, process the shared data
+        process_shared_data(shared_data)
 
 class VelocityVerletPropagator:
 
@@ -262,6 +284,18 @@ class Propagator:
         finite_difference_grad = ((d_curr + d_two_prev_steps - 2 * d_prev_step) / dt**2)
         return exp((-pi/2.0) * sqrt(abs(d_prev_step)**3 / abs(finite_difference_grad)))
 
+    def probabilities_zn(self, f_1,f_2,v_12,e_t,e_x):
+        """Compute the hopping probability between two electronic states
+           using the Zhu-Nakamura formula
+        """
+        a_par = sqrt(...)
+        b_par = sqrt(...)
+        if f_1*f_2 >0:
+            c_par = abs(b_par**4 +1)
+        else:
+            c_par = abs(b_par**4 -1)
+        return exp((-pi/(4.0*a_par**2)) * sqrt(2 /(b_par**2 + sqrt(abs(c_par)))))
+
     def diag_propagator(self, ene_cou_grad, dt, state):
         c_mch = state.ncoeff
         u_new = ene_cou_grad.u
@@ -423,11 +457,6 @@ class RescaleVelocity:
         diff = self.diff_ji(state_new)
         beta = self.beta_ji(state.vel, direct)
         alpha = self.alpha_ji(direct) 
-        if self.rescale_vel == "momentum" and self.reduced_kene == "true":
-            if self.reduced_kene == "nonlinear":
-                beta = beta*(1/sqrt(3*state.natoms-6))
-            else: 
-                beta = beta*(1/sqrt(3*state.natoms-5))
         if (beta**2 + 4*alpha*diff) < 0.0:
             """
             If this condition is satisfied, there is not hopping and 
@@ -685,7 +714,7 @@ class State(Colt):
     ncoeff = 0.0 1.0 :: flist
     # diagonal probability is not working yet
     prob = tully :: str :: tully, lz, lz_nacs     
-    rescale_vel = :: str 
+    rescale_vel = momentum :: str :: momentum, nacs 
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
@@ -693,14 +722,6 @@ class State(Colt):
     n_substeps = 10 :: int
     [substeps(false)]
     n_substeps = false :: bool
-    [rescale_vel(momentum)]
-    reduced_kene = :: str
-    [rescale_vel(nacs)]
-    res_nacs = true :: bool
-    [reduced_kene(true)]
-    number_vdf = nonlinear :: str :: nonlinear, linear
-    [reduced_kene(false)]
-    number_vdf = False :: str 
     """
     
     def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):
@@ -722,12 +743,6 @@ class State(Colt):
         self.ncoeff = ncoeff
         self.prob = prob
         self.rescale_vel = rescale_vel
-        if config['rescale_vel'] == "nacs":
-            self.rescale_vel = "nacs"
-        elif config['rescale_vel'] == "momentum":
-            self.rescale_vel = "momentum"
-            if config['rescale_vel']['momentum']['reduced_kene'] == "true":
-                self.reduced_kene = config['rescale_vel']['momentum']['reduced_kene']['number_vdf']
         self.coupling = coupling
         if self.rescale_vel == "nacs":
             if self.coupling in ("wf_overlap, non_coup"):
