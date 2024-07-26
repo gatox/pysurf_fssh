@@ -423,10 +423,10 @@ class RescaleVelocity:
         diff = self.diff_ji(state_new)
         beta = self.beta_ji(state.vel, direct)
         alpha = self.alpha_ji(direct) 
-        if self.rescale_vel == "momentum" and self.reduced_kene == "true":
-            if self.reduced_kene == "nonlinear":
+        if self.rescale_vel == "momentum":
+            if state.reduced_kene == "nonlinear":
                 beta = beta*(1/sqrt(3*state.natoms-6))
-            else: 
+            elif state.reduced_kene == "linear": 
                 beta = beta*(1/sqrt(3*state.natoms-5))
         if (beta**2 + 4*alpha*diff) < 0.0:
             """
@@ -689,18 +689,14 @@ class State(Colt):
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
-    [substeps(true)]
+    [substeps(True)]
     n_substeps = 10 :: int
-    [substeps(false)]
+    [substeps(False)]
     n_substeps = false :: bool
     [rescale_vel(momentum)]
-    reduced_kene = :: str
+    number_vdf = false :: str :: false, nonlinear, linear
     [rescale_vel(nacs)]
     res_nacs = true :: bool
-    [reduced_kene(true)]
-    number_vdf = nonlinear :: str :: nonlinear, linear
-    [reduced_kene(false)]
-    number_vdf = False :: str 
     """
     
     def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):
@@ -722,23 +718,19 @@ class State(Colt):
         self.ncoeff = ncoeff
         self.prob = prob
         self.rescale_vel = rescale_vel
-        if config['rescale_vel'] == "nacs":
-            self.rescale_vel = "nacs"
-        elif config['rescale_vel'] == "momentum":
-            self.rescale_vel = "momentum"
-            if config['rescale_vel']['momentum']['reduced_kene'] == "true":
-                self.reduced_kene = config['rescale_vel']['momentum']['reduced_kene']['number_vdf']
+        if config['rescale_vel'] == "momentum":
+            self.reduced_kene = config['rescale_vel']['number_vdf']
         self.coupling = coupling
-        if self.rescale_vel == "nacs":
+        if config['rescale_vel'] == "nacs":
             if self.coupling in ("wf_overlap, non_coup"):
                 raise SystemExit("Wrong coupling method or wrong rescaling velocity approach")
         self.method = method
         self.decoherence = decoherence
-        if config['substeps'] == "true":
-            self.substeps = True 
+        if config['substeps']:
+            self.substeps = config['substeps'] 
             self.n_substeps = config['substeps']['n_substeps']
         else:
-            self.substeps = False 
+            self.substeps = config['substeps'] 
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
