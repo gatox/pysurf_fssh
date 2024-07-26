@@ -21,14 +21,18 @@ class State(Colt):
     ncoeff = 0.0 1.0 :: flist
     # diagonal probability is not working yet
     prob = tully :: str :: tully, lz, lz_nacs    
-    rescale_vel = momentum :: str :: momentum, nacs 
+    rescale_vel = :: str 
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup 
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
-    [substeps(true)]
+    [substeps(True)]
     n_substeps = 10 :: int
-    [substeps(false)]
+    [substeps(False)]
     n_substeps = false :: bool
+    [rescale_vel(momentum)]
+    number_vdf = false :: str :: false, nonlinear, linear
+    [rescale_vel(nacs)]
+    res_nacs = true :: bool
     [thermostat(true)]
     # friction coefficient
     xi = 0.0 :: float
@@ -58,18 +62,19 @@ class State(Colt):
         self.states = states
         self.ncoeff = ncoeff
         self.prob = prob
-        self.rescale_vel = rescale_vel
+        if config['rescale_vel'] == "momentum":
+            self.reduced_kene = config['rescale_vel']['number_vdf']
         self.coupling = coupling
-        if self.rescale_vel == "nacs":
+        if config['rescale_vel'] == "nacs":
             if self.coupling in ("wf_overlap, non_coup"):
                 raise SystemExit("Wrong coupling method or wrong rescaling velocity approach")
         self.method = method
         self.decoherence = decoherence
-        if config['substeps'] == "true":
-            self.substeps = True 
+        if config['substeps']:
+            self.substeps = config['substeps'] 
             self.n_substeps = config['substeps']['n_substeps']
         else:
-            self.substeps = False 
+            self.substeps = config['substeps'] 
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
