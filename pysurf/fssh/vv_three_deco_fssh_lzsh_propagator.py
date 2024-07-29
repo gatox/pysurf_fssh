@@ -450,6 +450,11 @@ class RescaleVelocity:
         diff = self.diff_ji(state_new)
         beta = self.beta_ji(state.vel, direct)
         alpha = self.alpha_ji(direct) 
+        if self.rescale_vel == "momentum":
+            if state.reduced_kene == "nonlinear":
+                beta = beta*(1/sqrt(3*state.natoms-6))
+            elif state.reduced_kene == "linear": 
+                beta = beta*(1/sqrt(3*state.natoms-5))
         if (beta**2 + 4*alpha*diff) < 0.0:
             """
             If this condition is satisfied, there is not hopping and 
@@ -709,7 +714,7 @@ class State(Colt):
     ncoeff = 0.0 1.0 :: flist
     # diagonal probability is not working yet
     prob = tully :: str :: tully, lz, lz_nacs     
-    rescale_vel = momentum :: str :: momentum, nacs 
+    rescale_vel = :: str 
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
@@ -717,6 +722,10 @@ class State(Colt):
     n_substeps = 10 :: int
     [substeps(false)]
     n_substeps = false :: bool
+    [rescale_vel(momentum)]
+    number_vdf = false :: str :: false, nonlinear, linear
+    [rescale_vel(nacs)]
+    res_nacs = true :: bool
     [thermostat(true)]
     # friction coefficient
     xi = 0.0 :: float
@@ -747,8 +756,10 @@ class State(Colt):
         self.ncoeff = ncoeff
         self.prob = prob
         self.rescale_vel = rescale_vel
+        if config['rescale_vel'] == "momentum":
+            self.reduced_kene = config['rescale_vel']['number_vdf']
         self.coupling = coupling
-        if self.rescale_vel == "nacs":
+        if config['rescale_vel'] == "nacs":
             if self.coupling in ("wf_overlap, non_coup"):
                 raise SystemExit("Wrong coupling method or wrong rescaling velocity approach")
         self.method = method
