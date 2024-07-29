@@ -25,9 +25,9 @@ class State(Colt):
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup 
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
-    [substeps(True)]
+    [substeps(true)]
     n_substeps = 10 :: int
-    [substeps(False)]
+    [substeps(false)]
     n_substeps = false :: bool
     [rescale_vel(momentum)]
     number_vdf = false :: str :: false, nonlinear, linear
@@ -70,11 +70,11 @@ class State(Colt):
                 raise SystemExit("Wrong coupling method or wrong rescaling velocity approach")
         self.method = method
         self.decoherence = decoherence
-        if config['substeps']:
-            self.substeps = config['substeps'] 
+        if config['substeps'] == "true":
+            self.substeps = True 
             self.n_substeps = config['substeps']['n_substeps']
         else:
-            self.substeps = config['substeps'] 
+            self.substeps = False 
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
