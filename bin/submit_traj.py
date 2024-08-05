@@ -45,8 +45,9 @@ class SubmitTrajectories:
                     elif model == "LVC":
                         run(['sbatch lvc_fssh_run.sh'], cwd=subfolder, check=True, shell=True)
                     else:
-                        run(['sbatch lz_nacs.sh'], cwd=subfolder, check=True, shell=True)
+                        #run(['sbatch lz_nacs.sh'], cwd=subfolder, check=True, shell=True)
                         #run(['sbatch saoovqe.sh'], cwd=subfolder, check=True, shell=True)
+                        run(['sbatch in_saoovqe.sh'], cwd=subfolder, check=True, shell=True)
                         #run(['sbatch test_open_molcas.sh'], cwd=subfolder, check=True, shell=True)
                         #run(['sbatch open_molcas.sh'], cwd=subfolder, check=True, shell=True)
                         #run(['sbatch bagel.sh'], cwd=subfolder, check=True, shell=True)

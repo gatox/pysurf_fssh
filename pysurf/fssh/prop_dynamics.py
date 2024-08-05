@@ -19,7 +19,8 @@ class State(Colt):
     ncoeff = 0.0 1.0 :: flist
     # diagonal probability is not working yet
     prob = tully :: str :: tully, lz, lz_nacs    
-    rescale_vel = momentum :: str :: momentum, nacs 
+    rescale_vel = :: str 
+    rev_vel_no_hop = true :: bool :: true, false
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup 
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
@@ -27,9 +28,13 @@ class State(Colt):
     n_substeps = 10 :: int
     [substeps(false)]
     n_substeps = false :: bool
+    [rescale_vel(momentum)]
+    number_vdf = false :: str :: false, nonlinear, linear
+    [rescale_vel(nacs)]
+    res_nacs = true :: bool
     """
 
-    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):
+    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps):
         self.crd = crd
         self.natoms = len(crd)
         self.atomids = atomids
@@ -47,11 +52,14 @@ class State(Colt):
         self.states = states
         self.ncoeff = ncoeff
         self.prob = prob
-        self.rescale_vel = rescale_vel
+        self.rescale_vel = config['rescale_vel'].value
+        if config['rescale_vel'] == "momentum":
+            self.reduced_kene = config['rescale_vel']['number_vdf']
         self.coupling = coupling
-        if self.rescale_vel == "nacs":
+        if config['rescale_vel'] == "nacs":
             if self.coupling in ("wf_overlap, non_coup"):
                 raise SystemExit("Wrong coupling method or wrong rescaling velocity approach")
+        self.rev_vel_no_hop = rev_vel_no_hop
         self.method = method
         self.decoherence = decoherence
         if config['substeps'] == "true":
@@ -86,11 +94,12 @@ class State(Colt):
         ncoeff = config['ncoeff']
         prob = config['prob']
         rescale_vel = config['rescale_vel']
+        rev_vel_no_hop = config['rev_vel_no_hop']
         coupling = config['coupling']
         method = config['method']
         decoherence = config['decoherence']
         substeps = config['substeps']
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps)  
+        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps)  
 
     @staticmethod
     def read_db(db_file):
@@ -107,8 +116,8 @@ class State(Colt):
         return crd, vel, mass, atomids, model
 
     @classmethod
-    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps):
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps)
+    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps):
+        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps)
 
 if __name__=="__main__":
     State.from_questions(config = "prop.inp")
