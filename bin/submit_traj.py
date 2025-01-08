@@ -1,7 +1,11 @@
 import os
+import sys
 from subprocess import run, CalledProcessError
 
 class SubmitTrajectories:
+
+    def __init__(self, partition):
+        self.partition = partition
 
     def read_sampling(self):
         prop = open("sampling.inp", 'r+')
@@ -47,7 +51,12 @@ class SubmitTrajectories:
                     else:
                         #run(['sbatch lz_nacs.sh'], cwd=subfolder, check=True, shell=True)
                         #run(['sbatch saoovqe.sh'], cwd=subfolder, check=True, shell=True)
-                        run(['sbatch in_saoovqe.sh'], cwd=subfolder, check=True, shell=True)
+                        if self.partition == "cpu_lorentz_omolcas":
+                            run(['sbatch cpu_lorentz_open_molcas.sh'], cwd=subfolder, check=True, shell=True)
+                        elif self.partition == "cpu_long_vqe":
+                            run(['sbatch cpu_long_saoovqe.sh'], cwd=subfolder, check=True, shell=True)
+                        elif self.partition == "cpu_lorentz_vqe":
+                            run(['sbatch cpu_lorentz_saoovqe.sh'], cwd=subfolder, check=True, shell=True)
                         #run(['sbatch test_open_molcas.sh'], cwd=subfolder, check=True, shell=True)
                         #run(['sbatch open_molcas.sh'], cwd=subfolder, check=True, shell=True)
                         #run(['sbatch bagel.sh'], cwd=subfolder, check=True, shell=True)
@@ -59,5 +68,6 @@ class SubmitTrajectories:
 
 
 if __name__=='__main__':
-    all_traj = SubmitTrajectories()
+    partition = sys.argv[1]
+    all_traj = SubmitTrajectories(partition)
     all_traj.trajectories()
