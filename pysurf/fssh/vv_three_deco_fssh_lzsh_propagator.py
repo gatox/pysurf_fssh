@@ -948,6 +948,7 @@ class PrintResults:
             self.gen_results.write(self.dash_bo + "\n")
             self.t_crd_vel_ene_popu.write(f"{head.t},{head.dis},{head.dis_vel},{head.ekin},"\
                     f"{head.epot},{head.etotal},{head.state}\n")
+        self.gen_results.flush()
 
     def print_var(self, t, dt, sur_hop, state):        
         var = namedtuple("var","steps t ekin epot etotal hopp random state")
@@ -963,6 +964,7 @@ class PrintResults:
             self.hopping.append(f"Hopping from state {self.instate} to state {state.instate}"\
                                 f" in step: {var.steps}, at the time step: {var.t}")
             self.instate = var.state
+        self.gen_results.flush()
 
     def print_bh_var(self, t, dt, state):        
         var = namedtuple("var","steps t dis dis_vel ekin epot etotal state")
@@ -972,6 +974,7 @@ class PrintResults:
                     f"{var.ekin:>15.3f} {var.epot:>17.4f} {var.etotal:>13.4f} {var.state:>11.0f}\n")
         self.t_crd_vel_ene_popu.write(f"{var.t:>0.3f},{var.dis:>0.8f},{var.dis_vel:>0.8f},"\
                     f"{var.ekin:>0.8f},{var.epot:>0.8f},{var.etotal:>0.8f},{var.state:>0.0f}\n")
+        self.gen_results.flush()
 
     def print_bottom(self, state):
         if state.method == "Surface_Hopping":
