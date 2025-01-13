@@ -57,22 +57,23 @@ class Sampling(Colt):
         return cls.from_config(config, logger=logger)    
 
     @classmethod 
-    def create_db(cls, dbfilename, variables, dimensions, system, modes, model=False, sp=False, logger=None):
+    def create_db(cls, sampling_config, dbfilename, variables, dimensions, system, modes, model=False, sp=False, logger=None):
         db = SamplingDB.create_db(dbfilename, variables, dimensions=dimensions, system=system, modes=modes, model=model, sp=sp)
-        config = db.get_config()
-        config['sampling_db'] = dbfilename
-        return cls(config, db, db.dynsampling, logger=logger)
+        # config = db.get_config()
+        sampling_config = cls.generate_user_input(sampling_config).check_only()
+        sampling_config.update({'sampling_db': dbfilename})
+        return cls(sampling_config, db, db.dynsampling, logger=logger, sp=sp)
 
     @classmethod
-    def from_db(cls, dbfilename, logger=None):
+    def from_db(cls, sampling_config, dbfilename, logger=None, sp=False):
         db = SamplingDB.from_db(dbfilename)
-        config = db.get_config()
-        config['sampling_db'] = dbfilename
-        return cls(config, db, db.dynsampling, logger=logger)
-    
-    def __init__(self, config, db, dynsampling, sampler=None, logger=None):
-        """ Sampling always goes with a database, if not needed use Sampler class
-        """
+        # config = db.get_config()
+        sampling_config = cls.generate_user_input(sampling_config).check_only()
+        sampling_config.update({'sampling_db': dbfilename})
+        return cls(sampling_config, db, db.dynsampling, logger=logger, sp=sp)
+
+    def __init__(self, config, db, dynsampling, sampler=None, logger=None, sp=False):
+        """ Sampling always goes with a database, if not needed use Sampler class"""
         self._db = db    
         if logger is None:
             self.logger = get_logger('sampling.log', 'sampling')
@@ -81,18 +82,28 @@ class Sampling(Colt):
             self.logger = logger
 
         if sampler is None:
-            logger.info(f"Loading sampler {config['method'].value}")
+            self.logger.info(f"Loading sampler {config['method'].value}")
             self.sampler = self._get_sampler(config['method'], start=self.nconditions)
         else:
             self.sampler = sampler
 
-        n_conditions = self.sampler.get_number_of_conditions(config['n_conditions_max'])
+        if 'n_conditions_max' not in config:
+            n_conditions_max = config['n_conditions']
+        else:
+            n_conditions_max = config['n_conditions_max']
 
-        # check for conditions
-        if self.nconditions < n_conditions:
-            # setup sampler
-            self.logger.info(f"Adding {n_conditions-self.nconditions} additional entries to the database")
-            self.add_conditions(n_conditions - self.nconditions)
+
+        if sp is True:
+            n_conditions = self.sampler.get_number_of_conditions(1)
+            self.write_conditions(1)
+        else:
+            n_conditions = self.sampler.get_number_of_conditions(n_conditions_max)
+
+            # check for conditions
+            if self.nconditions < n_conditions:
+                # setup sampler
+                self.logger.info(f"Adding {n_conditions-self.nconditions} additional entries to the database")
+                self.add_conditions(n_conditions - self.nconditions)
 
     def add_conditions(self, nconditions, state=0):
         # TODO
@@ -104,6 +115,17 @@ class Sampling(Colt):
             if cond is None:
                 self.logger.error('Sampler has no more conditions')
             self._db.append_condition(cond)
+
+    def write_conditions(self, nconditions, state=0):
+        # TODO
+        # Take the random seed and random counter from the database to
+        # assure the consistency with all
+        # the previous conditions
+        for _ in range(nconditions):
+            cond = self.sampler.get_condition()
+            if cond is None:
+                self.logger.error('Sampler has no more conditions')
+            self._db.write_condition(cond, 0)
     
     def write_condition(self, condition, idx):
         self._db.write_condition(condition, idx)
