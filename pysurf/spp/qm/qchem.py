@@ -571,7 +571,6 @@ class QChem(AbinitioBase):
                         sf_out = self.reader(output, ['Sf_Fosc_6'], {'nstates': self.nstates})
                         sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
                         sf_combs = np.array(sf_combs)
-                        print("sf out = ", sf_out['Sf_Fosc_6'])
                         sf_osc = [sf_out['Sf_Fosc_6'][0][i+1,j+1] for i,j in sf_combs]
                         if not isinstance(sf_osc, list):
                             outfosc = [0.] + [value for value in sf_osc]
