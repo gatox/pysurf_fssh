@@ -20,6 +20,9 @@ class SetupPropagation(SetupBase):
     # Number of trajectories for the propagation
     n_traj = -1 :: int
 
+    # sampling input
+    sampling_input = sampling.inp :: existing_file
+
     # Database containing all the initial conditions
     sampling_db = sampling.db :: existing_file
 
@@ -49,7 +52,7 @@ class SetupPropagation(SetupBase):
 
 
         # Open DB of initial conditions once, so that it is available
-        sampling = Sampling.from_db(config['sampling_db'])
+        sampling = Sampling.from_db(config['sampling_input'], config['sampling_db'], logger=logger)
 
         #Make sure that inputfile for the SPP exists and is complete
         
@@ -107,7 +110,7 @@ class SetupPropagation(SetupBase):
         #    initname = os.path.join(foldername, 'init.db')
         #setup new database 
         initname = os.path.join(foldername, 'sampling.db')
-        new_sampling = Sampling.create_db(initname, sampling.info['variables'], sampling.info['dimensions'], sampling.system, sampling.modes, model=sampling.model, sp=True)
+        new_sampling = Sampling.create_db(config['sampling_input'], initname, sampling.info['variables'], sampling.info['dimensions'], sampling.system, sampling.modes, model=sampling.model, sp=False)
         #copy condition to new db
         condition = sampling.get_condition(number)
         new_sampling.write_condition(condition, 0)
