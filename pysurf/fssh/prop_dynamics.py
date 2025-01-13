@@ -62,6 +62,7 @@ class State(Colt):
         self.states = states
         self.ncoeff = ncoeff
         self.prob = prob
+        self.rescale_vel = config['rescale_vel'].value
         if config['rescale_vel'] == "momentum":
             self.reduced_kene = config['rescale_vel']['number_vdf']
         self.coupling = coupling
