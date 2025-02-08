@@ -9,6 +9,7 @@ from pysurf.spp import SurfacePointProvider
 from pysurf.database import PySurfDB
 from colt import Colt
 
+
 class VelocityVerletPropagator:
 
     def __init__(self, state):
@@ -16,13 +17,13 @@ class VelocityVerletPropagator:
         self.t = self.state.t
         self.dt = self.state.dt
         self.t_max = self.dt*self.state.mdsteps 
+        self.results = PrintResults()
         if self.state.method == "Surface_Hopping":
             self.electronic = SurfaceHopping(self.state)
             if self.state.ncoeff[self.state.instate] == 0:
                 raise SystemExit("Wrong population for initial state")
         elif self.state.method == "Born_Oppenheimer":  
             self.electronic = BornOppenheimer(self.state)
-        self.results = PrintResults()
 
     def run(self):
         
@@ -502,6 +503,10 @@ class SurfaceHopping(BornOppenheimer):
         elif self.coupling == "semi_coup" and self.prob == "lz_nacs":
             needed_properties = ["energy", "gradient", "nacs"]
             self.spp = SurfacePointProvider.from_questions(["energy","gradient","nacs"], self.nstates, self.natoms, config ="spp.inp", atomids = state.atomids)
+        else:
+            print("self.coupling = ", self.coupling)
+            print("self.prop = ", self.prob)
+            raise
 
     def get_gradient(self, crd, curr_state):
         result = self.spp.request(crd, ['gradient'], states=[curr_state])
@@ -653,7 +658,6 @@ class SurfaceHopping(BornOppenheimer):
             state.instate = state_new
             sur_hop = namedtuple("sur_hop", "aleatory prob state_new")
             return sur_hop(aleatory, prob, state_new)
-            
 
     def new_surface(self, state, results, crd_new, t, dt):
         ene_cou_grad = self.get_ene_cou_grad(crd_new, state.instate)
