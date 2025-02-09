@@ -234,7 +234,7 @@ Implemented: {interface.implemented}
 
 
 def get_spp(configfile, properties, nstates, natoms, *,
-        nghost_states=0, atomids=None, logger=None, checkonly=True):
+        nghost_states=0, atomids=None, logger=None, check_only=True):
     """Initialize a Surface point provider from a config file 
 
     Args
@@ -264,4 +264,4 @@ def get_spp(configfile, properties, nstates, natoms, *,
 
     """
     return SurfacePointProvider.from_questions(properties, nstates, natoms, nghost_states=nghost_states, atomids=atomids,
-                                               config=configfile, checkonly=checkonly)
+                                               config=configfile, check_only=check_only)
