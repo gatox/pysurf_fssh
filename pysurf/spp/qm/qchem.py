@@ -1,6 +1,7 @@
 from collections.abc import MutableMapping
 from collections import namedtuple
 from copy import deepcopy
+import shutil
 import os
 import numpy as np
 #
@@ -57,6 +58,16 @@ settings = multi=true
 """
 
 
+def get_overlap(txt):
+    ov = []
+    for line in txt:
+        cols = line.split()
+        if not cols[0].startswith('xxover2xx'):
+            raise ValueError("Did not get overlap matrix")
+        ov.append([float(val) for val in cols[1:]])
+    return ov
+
+
 def length(kwargs):
     natoms = kwargs['natoms']
     if natoms % 6 == 0:
@@ -100,7 +111,6 @@ SCFGradient = Event('SCFGradient',
             func=get_gradient,
 )
 
-
 CisGradient = Event('CisGradient',
             'xgrep', {'keyword': 'Gradient of the state energy (including CIS Excitation Energy)',
                       'ilen': length,
@@ -130,6 +140,15 @@ NACouplingGEx = Event('NACouplingGEx',
              settings = {"multi":True, "reset":True},
             func=get_nacs,
 )
+
+WFOverlap = Event('WFOverlap',
+        'xgrep', {'keyword': 'CIS State Overlap',
+                  'ishift': 5,
+                  'ilen': 'nstates'},
+        func=get_overlap,
+)
+
+
 
 NACouplingEx = Event('NACouplingEx',
             'xgrep', {'keyword': 'CIS derivative coupling with ETF',
@@ -183,6 +202,7 @@ QChemReader.add_event("NACouplingEx", NACouplingEx)
 QChemReader.add_event("NACouplingSFEx", NACouplingSFEx)
 QChemReader.add_event("EOMGradient", EOMGradient)
 QChemReader.add_event("NACouplingEOMCCSD", NACouplingEOMCCSD)
+QChemReader.add_event("CISWFOverlap", WFOverlap)
 
 
 tpl = Template("""
@@ -283,7 +303,7 @@ class QChem(AbinitioBase):
     sym_ignore = true :: bool
     couplings = nacs :: str :: nacs, wf_overlap
     spin_flip = :: str
-    _version = 5 :: int :: [5, 6]
+    version = 5 :: int :: [5, 6]
     [method(tddft)]
     exchange = pbe0 :: str
     max_scf_cycles = 500 :: int
@@ -298,8 +318,8 @@ class QChem(AbinitioBase):
     scf_algorithm  = diis_gdm :: str :: diis, diis_gdm, rca_diis
     cc_trans_prop = 2 :: int
     eom_davidson_convergence = 9 :: int
-    scf_convergence = 9 :: int
-    cc_convergence = 9 :: int
+    scf_convergence = 8 :: int
+    cc_convergence = 8 :: int
     [spin_flip(true)]
     spin_flip = true :: bool
     cis_s2_thresh = 120 :: int
@@ -346,11 +366,7 @@ class QChem(AbinitioBase):
 
 
     wf_overlap_settings = {
-       'scf_convergence' : 7,
-       'scf_guess' : 'core',
        'wf_overlap_minsurf': 1,
-       'wf_overlap_nsurf': 5,
-       'qmmm_ext_gifs': 1,
        'dump_wf_overlap': 1,
     }
 
@@ -358,7 +374,7 @@ class QChem(AbinitioBase):
     runtime = ['jobtype',]
 
     #
-    implemented = ['energy', 'gradient', 'fosc', 'transmom', 'nacs', 'wf_overlap']
+    implemented = ['energy', 'gradient', 'fosc', 'transmom', 'nacs', 'wf_overlap', 'sts_mom']
 
     def __init__(self, config, atomids, nstates, chg, mult, exe, nthreads, couplings, spin_flip, basis, method):
         self.molecule = Molecule(atomids, None)
@@ -371,10 +387,16 @@ class QChem(AbinitioBase):
         self.reader._events['ExcitedStateInfo'].nmax = nstates -1
         self._update_settings(config)
         self.couplings = couplings
+        print("nstates inside Q-Chem = ", self.nstates)
+
+        if 'QCSCRATCH' not in os.environ:
+            raise SystemExit("To run Q-Chem, please specify QCSCRATCH")
+        self.qcscratch = os.environ['QCSCRATCH']
         self.method = config['method']
-        self.version = config['_version']
+        self.version = config['version']
         self.basis = basis
         self.icall = 0
+        self.ncall = 0
         if self.couplings == "wf_overlap":
             self.wf_overlap_settings['wf_overlap_nsurf'] = nstates -1
 
@@ -393,27 +415,21 @@ class QChem(AbinitioBase):
         return cls(config, atomids, nstates, config['chg'], config['mult'], config['exe'], config['nthreads'], config['couplings'], config['spin_flip'], config['basis'], config['method'])
 
     def get(self, request):
-        if self.icall == 0:
-            self.wf_overlap_settings['dump_wf_overlap'] = 1
-            self.icall = 1
-        else:
-            self.wf_overlap_settings['dump_wf_overlap'] = 2
+        self.icall += 1
         # update coordinates
         self.molecule.crd = request.crd
         if self.method == 'tddft':
+            if self.spin_flip is True:
+                return self.get_spinflip(request)
+
             if 'gradient' in request:
-                if self.spin_flip != True:
-                    self._do_gradient(request)
-                else:
-                    self._do_sf_gradient(request)
+                self._do_gradient(request)
             if 'energy' in request:
                 self._do_energy(request)
             if 'nacs' in request:
-                if self.spin_flip != True:
-                    self._do_nacs(request)
-                else:
-                    self._do_sf_nacs(request)
+                self._do_nacs(request)
             if 'wf_overlap' in request:
+                raise SystemExit("this is a bug")
                 self._do_energy(request)
             return request
         elif self.method == 'eom-ccsd':
@@ -424,6 +440,23 @@ class QChem(AbinitioBase):
             if 'nacs' in request:
                 self._do_eomccsd_nacs(request)
             return request
+        raise ValueError("Do not know Method!!")
+
+    def get_spinflip(self, request):
+        # basic scheme:
+        # First compute energy to find the Ms=0 state
+        # Then do all other calculations
+        if request.same_crd is False:
+            self.index = []
+            self._do_sf_energy(request)
+
+        if 'gradient' in request:
+            self._do_sf_gradient(request)
+
+        if 'nacs' in request:
+            self._do_sf_nacs(request)
+
+        return request
 
     def cou_states(self):
         y = ""
@@ -449,7 +482,7 @@ class QChem(AbinitioBase):
     def _do_sf_gradient(self, request):
         gradient = {}
         for state in request.states:
-            gradient[state] = self._do_sf_ex_gradient(request, state + 1)
+            gradient[state] = self._do_sf_ex_gradient(request, self.index[state] + 1)
         request.set('gradient', gradient)
 
     def _do_eomccsd_gradient(self, request):
@@ -493,6 +526,112 @@ class QChem(AbinitioBase):
             outst = [en[0] for en in out['EOMEE']]
         request.set('energy', outst)
 
+    def _do_sf_energy(self, request):
+        settings = UpdatableDict(self.settings, self.excited_state_settings, self.wf_overlap_settings)
+        if self.icall == 1:
+            settings['dump_wf_overlap'] = 1
+        else:
+            settings['scf_guess'] = 'read'
+            settings['dump_wf_overlap'] = 2
+        settings['jobtype'] = 'sp'
+        if self.version == 5:
+            settings['cis_n_roots'] = self.nstates + 1
+            settings['wf_overlap_nsurf'] = self.nstates + 1
+        else:
+            settings['cis_n_roots'] = self.nstates
+            settings['wf_overlap_nsurf'] = self.nstates
+        if 'sts_mom' in request or 'fosc' in request:
+            settings = UpdatableDict(settings, self.sf_fosc_excited_state_settings)
+        self._write_input(self.filename, settings.items())
+        output = self.submit_save(self.filename, 'pysurf.energy')
+        if self.version == 5:
+            out = self.reader(output, ['Sf_ExcitedState'])
+            s2_threshold = float(settings['cis_s2_thresh']/100)
+            # remove Ms=0 Triplett states
+            self.index = [i for i, s in enumerate(out['SF_S_2']) if s[0] < s2_threshold]
+            sf_ene = [out['ExcitedState'][idx] for idx in self.index]
+        else:
+            out = self.reader(output, ['ExcitedState6'])
+            self.index = [i for i in range(self.nstates)]
+            sf_ene = out['ExcitedState6']
+            #
+        if self.version == 5:
+            if int(self.nstates - len(self.index)) == 0:
+                self.ntriples = 1 #one triple state
+                if not isinstance(sf_ene, list):
+                    outst = [sf_ene]
+                else:
+                    outst = [en[0] for en in sf_ene]
+                request.set('energy', outst)
+            elif int(self.nstates - len(self.index)) < 0:
+                self.ntriples = 0 #zero triple states
+                if not isinstance(sf_ene, list):
+                    outst = [sf_ene]
+                else:
+                    outst = [en[0] for en in sf_ene]
+                request.set('energy', outst[:self.nstates])
+            else:
+                raise SystemExit("High spin contamination in more than one electronic states")
+        else:
+            self.ntriples = 0 #zero triple states
+            if not isinstance(sf_ene, list):
+                outst = [sf_ene]
+            else:
+                outst = [en[0] for en in sf_ene]
+            request.set('energy', outst[:self.nstates])
+
+        if self.version == 5:
+            if 'fosc' in request:
+                sf_out = self.reader(output, ['Sf_Fosc'], {'nstates': self.nstates + 1})
+                sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
+                sf_combs = np.array(sf_combs)
+                sf_osc = [sf_out['Sf_Fosc'][0][i+1,j+1] for i,j in sf_combs]
+                if not isinstance(sf_osc, list):
+                    outfosc = [0.] + [value for value in sf_osc]
+                else:
+                    outfosc = [0.] + sf_osc
+                request.set('fosc', outfosc)
+        else:
+            if 'fosc' in request:
+                sf_out = self.reader(output, ['Sf_Fosc_6'], {'nstates': self.nstates})
+                sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
+                sf_combs = np.array(sf_combs)
+                sf_osc = [sf_out['Sf_Fosc_6'][0][i+1,j+1] for i,j in sf_combs]
+                if not isinstance(sf_osc, list):
+                    outfosc = [0.] + [value for value in sf_osc]
+                else:
+                    outfosc = [0.] + sf_osc
+                request.set('fosc', outfosc)
+
+        if 'sts_mom' in request:
+            sf_out = self.reader(output, ['Sf_Fosc_6'], {'nstates': self.nstates})
+            sf_combs = list(combinations(self.index,2))
+            sts_mom = np.zeros((self.nstates, self.nstates), dtype=float)
+            for i, j in sf_combs:
+                ii, ij = self.index.index(i), self.index.index(j)
+                sts_mom[ii, ij] = sf_out['Sf_Fosc_6'][0][i+1,j+1]
+                sts_mom[ij, ii] = sts_mom[ii, ij]
+            request.set('sts_mom', sts_mom)
+
+        if 'transmom' in request:
+            if not isinstance(out['transmom'], list):
+                outtransmom = [0.] + [out['transmom']]
+            else:
+                outtransmom = [0.] + out['transmom']
+            request.set('transmom', outtransmom)
+
+        if 'wf_overlap' in request:
+            wf_ov = self._read_wf_overlap(output, settings['cis_n_roots'])
+            request.set('wf_overlap', wf_ov)
+
+    def _read_wf_overlap(self, output, nstates):
+        result = self.reader(output, ['CISWFOverlap'], {'nstates': nstates})
+        ov = result['CISWFOverlap']
+        res = []
+        for i in range(self.nstates):
+            line = ov[self.index[i]]
+            res.append([line[self.index[j]] for j in range(self.nstates)])
+        return np.array(res)
 
     def _do_energy(self, request):
         if self.couplings in ("nacs","semi_coup"):
@@ -601,7 +740,6 @@ class QChem(AbinitioBase):
             wf_ov = self.ov_matrix()
             request.set('wf_overlap', wf_ov)
 
-
     def _do_gs_gradient(self, request):
         settings = UpdatableDict(self.settings)
         settings['jobtype'] = 'force'
@@ -622,15 +760,25 @@ class QChem(AbinitioBase):
 
     def _do_sf_ex_gradient(self, request, state):
         settings = UpdatableDict(self.settings, self.excited_state_settings)
+        settings['scf_guess'] = 'read'
         settings['jobtype'] = 'force'
-        if state == 1:
-            settings['CIS_STATE_DERIV'] = state
+        settings['CIS_STATE_DERIV'] = state
+        if self.version == 5:
             settings['cis_n_roots'] = self.nstates + 1
-        elif state > 1:
-            settings['CIS_STATE_DERIV'] = state + 1
-            settings['cis_n_roots'] = self.nstates + 1
+        else:
+            settings['cis_n_roots'] = self.nstates
         self._write_input(self.filename, settings.items())
-        output = self.submit(self.filename)
+        #
+        path = os.path.join(self.qcscratch, 'pysurf.gradient')
+        if os.path.exists(path):
+            shutil.rmtree(path)
+        energy_path = os.path.join(self.qcscratch, 'pysurf.energy')
+        if not os.path.exists(energy_path):
+            raise SystemExit("SF-Energy calculation has to be executed before a Gradient call!")
+        #
+        shutil.copytree(energy_path, path)
+        #
+        output = self.submit_save(self.filename, 'pysurf.gradient')
         out = self.reader(output, ['CisGradient'], {'natoms': self.molecule.natoms})
         return out['CisGradient']
 
@@ -678,7 +826,19 @@ class QChem(AbinitioBase):
         settings['cis_der_numstate'] = self.nstates
         settings['cis_n_roots'] = self.nstates + 1
         self._write_input_sf_nacs(self.filename, settings.items())
-        output = self.submit(self.filename)
+
+        #
+        path = os.path.join(self.qcscratch, 'pysurf.nacs')
+        if os.path.exists(path):
+            shutil.rmtree(path)
+        energy_path = os.path.join(self.qcscratch, 'pysurf.energy')
+        if not os.path.exists(energy_path):
+            raise SystemExit("SF-Energy calculation has to be executed before a NACs call!")
+        #
+        shutil.copytree(energy_path, path)
+
+        output = self.submit_save(self.filename, 'pysurf.nacs')
+
         if self.version == 5:
             out = self.reader(output, ['nacs','NACouplingSFEx'], {'natoms': self.molecule.natoms})
             if not isinstance(out['NACouplingSFEx'][0][0], list):
@@ -742,7 +902,6 @@ class QChem(AbinitioBase):
         else:
             raise SystemExit("The number of states must be higher than 1")
 
-
     def _write_input(self, filename, remsection):
         """write input file for qchem"""
         with open(filename, 'w') as f:
@@ -778,19 +937,21 @@ class QChem(AbinitioBase):
                 basis_set = self.basis_gen()
                 f.write(self.bs.render(basis_set=basis_set))
 
+    def _increase_submit(self):
+        self.ncall += 1
+        print(f"Q-Chem got called for the {self.ncall}s time")
+
     def submit(self, filename):
+        self._increase_submit()
         output = filename + ".out"
-        nt = "-nt"
-        cmd = f"{self.exe} {nt} {self.nthreads} {filename} > {output}"
+        cmd = f"{self.exe} -nt {self.nthreads} {filename} > {output}"
         os.system(cmd)
         return output
 
-    def submit_save(self, filename):
+    def submit_save(self, filename, save_file):
+        self._increase_submit()
         output = filename + ".out"
-        nt = "-nt"
-        save_file = filename
-        save = "-save"
-        cmd = f"{self.exe} {save} {nt} {self.nthreads} {filename} {output} {save_file} > save"
+        cmd = f"{self.exe} -save -nt {self.nthreads} {filename} {output} {save_file} > save"
         os.system(cmd)
         return output
 
