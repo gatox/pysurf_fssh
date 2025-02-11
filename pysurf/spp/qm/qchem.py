@@ -390,12 +390,12 @@ class QChem(AbinitioBase):
             self.cis_s2_thresh = spin_flip['cis_s2_thresh']
             if mult != 3:
                 print(f"Warning: Spin flip requested but Multiplicity == {mult} ")
+        self.couplings = couplings
         self.mult = mult
         self.filename = 'qchem.in'
         self.nstates = nstates
         self.reader._events['ExcitedStateInfo'].nmax = nstates -1
         self._update_settings(config)
-        self.couplings = couplings
 
         if 'QCSCRATCH' not in os.environ:
             raise SystemExit("To run Q-Chem, please specify QCSCRATCH")
@@ -415,7 +415,7 @@ class QChem(AbinitioBase):
         self.settings.update({key: value for key, value in config['method'].items()})
         self.spin_flip = config['spin_flip']['spin_flip']
         self.sts_mom = config['spin_flip']['sts_mom']
-        if self.spin_flip is True:
+        if self.spin_flip is True and self.couplings == 'wf_overlap':
             self.settings['cis_s2_thresh'] = 300
         #for key, value in config['method'].items():
         #    self.settings[key] = value
@@ -456,6 +456,10 @@ class QChem(AbinitioBase):
         # basic scheme:
         # First compute energy to find the Ms=0 state
         # Then do all other calculations
+        if self.couplings == 'nacs':
+            if 'wf_overlap' in request:
+                raise SystemExit("Cannot do wf_overlap calculations!")
+
         if request.same_crd is False:
             self.index = []
             self._do_sf_energy(request)
@@ -537,20 +541,23 @@ class QChem(AbinitioBase):
         request.set('energy', outst)
 
     def _do_sf_energy(self, request):
-        settings = UpdatableDict(self.settings, self.excited_state_settings, self.wf_overlap_settings)
+        settings = UpdatableDict(self.settings, self.excited_state_settings)
         #
-        if 'wf_overlap' not in request:
-            settings['cis_s2_thresh'] = self.cis_s2_thresh
-        #
-        if self.icall == 1:
-            settings['dump_wf_overlap'] = 1
+        if self.couplings == 'wf_overlap':
+            if self.icall == 1:
+                settings['dump_wf_overlap'] = 1
+            else:
+                settings['scf_guess'] = 'read'
+                settings['dump_wf_overlap'] = 2
+            settings['wf_overlap_minsurf'] = self.wf_overlap_settings['wf_overlap_minsurf']
+            settings['wf_overlap_nsurf'] = self.nstates + self._sf_buffer_states
         else:
-            settings['scf_guess'] = 'read'
-            settings['dump_wf_overlap'] = 2
+            if self.icall != 1:
+                settings['scf_guess'] = 'read'
         settings['jobtype'] = 'sp'
         #
         settings['cis_n_roots'] = self.nstates + self._sf_buffer_states
-        settings['wf_overlap_nsurf'] = self.nstates + self._sf_buffer_states
+
         #
         if 'sts_mom' in request or 'fosc' in request:
             settings = UpdatableDict(settings, self.sf_fosc_excited_state_settings)
