@@ -890,7 +890,7 @@ class QChem(AbinitioBase):
             f.write(self.tpl.render(chg=self.chg, mult=self.mult,
                     mol=self.molecule, remsection=remsection))
             #
-            index = [i+1 for i in self.index]
+            index = [i+1 for i in self.index[:self.nstates]]
             coupled = self.sf_cou_states(index)
             f.write(self.dc.render(coupled=coupled))
             if self.basis == 'gen':
