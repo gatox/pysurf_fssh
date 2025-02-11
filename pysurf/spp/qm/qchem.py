@@ -1,6 +1,4 @@
 from collections.abc import MutableMapping
-from collections import namedtuple
-from copy import deepcopy
 import shutil
 import os
 import numpy as np
@@ -92,9 +90,11 @@ def get_nacs(scftxt):
         nac.append([float(struct[0]),float(struct[1]),float(struct[2])])
     return nac
 
+
 def sf_nstates(kwargs):
     nstates = kwargs['nstates']
     return int(comb(nstates, 2))
+
 
 def get_sf_fosc(scftxt):
     fosc = {}
@@ -303,7 +303,6 @@ class QChem(AbinitioBase):
     sym_ignore = true :: bool
     couplings = nacs :: str :: nacs, wf_overlap
     spin_flip = :: str
-    version = 5 :: int :: [5, 6]
     [method(tddft)]
     exchange = pbe0 :: str
     max_scf_cycles = 500 :: int
@@ -321,11 +320,12 @@ class QChem(AbinitioBase):
     scf_convergence = 8 :: int
     cc_convergence = 8 :: int
     [spin_flip(true)]
-    spin_flip = true :: bool
+    spin_flip = true :: bool :: [true]
     cis_s2_thresh = 120 :: int
     sts_mom = true :: bool :: true, false
+    buffer_states = 1 :: int :: >1
     [spin_flip(false)]
-    spin_flip = false :: bool
+    spin_flip = false :: bool :: [false]
     """
 
     tpl = tpl
@@ -381,19 +381,22 @@ class QChem(AbinitioBase):
         self.exe = exe
         self.nthreads = nthreads
         self.chg = chg
+        if spin_flip.value == "true":
+            self._sf_buffer_states = spin_flip['buffer_states']
+            self.cis_s2_thresh = spin_flip['cis_s2_thresh']
+            mult = mult + 2
+            print("Warning: Spin flip requested, changing multiplicity by +2 to ", mult)
         self.mult = mult
         self.filename = 'qchem.in'
         self.nstates = nstates
         self.reader._events['ExcitedStateInfo'].nmax = nstates -1
         self._update_settings(config)
         self.couplings = couplings
-        print("nstates inside Q-Chem = ", self.nstates)
 
         if 'QCSCRATCH' not in os.environ:
             raise SystemExit("To run Q-Chem, please specify QCSCRATCH")
         self.qcscratch = os.environ['QCSCRATCH']
         self.method = config['method']
-        self.version = config['version']
         self.basis = basis
         self.icall = 0
         self.ncall = 0
@@ -403,10 +406,13 @@ class QChem(AbinitioBase):
     def _update_settings(self, config):
         self.settings = {key: config[key] for key in self.settings}
         self.settings.update({'basis': config['basis']})
-        self.settings.update({key: value for key, value in config['spin_flip'].items()})
+        self.settings.update({key: value for key, value in config['spin_flip'].items()
+                              if key != 'buffer_states'})
         self.settings.update({key: value for key, value in config['method'].items()})
         self.spin_flip = config['spin_flip']['spin_flip']
         self.sts_mom = config['spin_flip']['sts_mom']
+        if self.spin_flip is True:
+            self.settings['cis_s2_thresh'] = 500
         #for key, value in config['method'].items():
         #    self.settings[key] = value
 
@@ -534,83 +540,60 @@ class QChem(AbinitioBase):
             settings['scf_guess'] = 'read'
             settings['dump_wf_overlap'] = 2
         settings['jobtype'] = 'sp'
-        if self.version == 5:
-            settings['cis_n_roots'] = self.nstates + 1
-            settings['wf_overlap_nsurf'] = self.nstates + 1
-        else:
-            settings['cis_n_roots'] = self.nstates
-            settings['wf_overlap_nsurf'] = self.nstates
+        #
+        settings['cis_n_roots'] = self.nstates + self._sf_buffer_states
+        settings['wf_overlap_nsurf'] = self.nstates + self._sf_buffer_states
+        #
         if 'sts_mom' in request or 'fosc' in request:
             settings = UpdatableDict(settings, self.sf_fosc_excited_state_settings)
         self._write_input(self.filename, settings.items())
         output = self.submit_save(self.filename, 'pysurf.energy')
-        if self.version == 5:
-            out = self.reader(output, ['Sf_ExcitedState'])
-            s2_threshold = float(settings['cis_s2_thresh']/100)
-            # remove Ms=0 Triplett states
-            self.index = [i for i, s in enumerate(out['SF_S_2']) if s[0] < s2_threshold]
-            sf_ene = [out['ExcitedState'][idx] for idx in self.index]
-        else:
-            out = self.reader(output, ['ExcitedState6'])
-            self.index = [i for i in range(self.nstates)]
-            sf_ene = out['ExcitedState6']
-            #
-        if self.version == 5:
-            if int(self.nstates - len(self.index)) == 0:
-                self.ntriples = 1 #one triple state
-                if not isinstance(sf_ene, list):
-                    outst = [sf_ene]
-                else:
-                    outst = [en[0] for en in sf_ene]
-                request.set('energy', outst)
-            elif int(self.nstates - len(self.index)) < 0:
-                self.ntriples = 0 #zero triple states
-                if not isinstance(sf_ene, list):
-                    outst = [sf_ene]
-                else:
-                    outst = [en[0] for en in sf_ene]
-                request.set('energy', outst[:self.nstates])
+        # read excited state energies
+        out = self.reader(output, ['Sf_ExcitedState'])
+        s2_threshold = float(self.cis_s2_thresh/100)
+        # remove the Ms=0 Triplett states
+        self.index = [i for i, s in enumerate(out['SF_S_2']) if s[0] < s2_threshold]
+        sf_ene = [out['ExcitedState'][idx] for idx in self.index]
+        #
+        if int(self.nstates - len(self.index)) == 0:
+            self.ntriples = 1 #one triple state
+            if not isinstance(sf_ene, list):
+                outst = [sf_ene]
             else:
-                raise SystemExit("High spin contamination in more than one electronic states")
-        else:
+                outst = [en[0] for en in sf_ene]
+            request.set('energy', outst)
+        elif int(self.nstates - len(self.index)) < 0:
             self.ntriples = 0 #zero triple states
             if not isinstance(sf_ene, list):
                 outst = [sf_ene]
             else:
                 outst = [en[0] for en in sf_ene]
             request.set('energy', outst[:self.nstates])
-
-        if self.version == 5:
-            if 'fosc' in request:
-                sf_out = self.reader(output, ['Sf_Fosc'], {'nstates': self.nstates + 1})
-                sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
-                sf_combs = np.array(sf_combs)
-                sf_osc = [sf_out['Sf_Fosc'][0][i+1,j+1] for i,j in sf_combs]
-                if not isinstance(sf_osc, list):
-                    outfosc = [0.] + [value for value in sf_osc]
-                else:
-                    outfosc = [0.] + sf_osc
-                request.set('fosc', outfosc)
         else:
-            if 'fosc' in request:
-                sf_out = self.reader(output, ['Sf_Fosc_6'], {'nstates': self.nstates})
-                sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
-                sf_combs = np.array(sf_combs)
-                sf_osc = [sf_out['Sf_Fosc_6'][0][i+1,j+1] for i,j in sf_combs]
-                if not isinstance(sf_osc, list):
-                    outfosc = [0.] + [value for value in sf_osc]
-                else:
-                    outfosc = [0.] + sf_osc
-                request.set('fosc', outfosc)
+            raise SystemExit("High spin contamination in more than one electronic states")
+
+        if 'fosc' in request:
+            sf_out = self.reader(output, ['Sf_Fosc'], {'nstates': self.nstates + self._sf_buffer_states})
+            sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
+            sf_combs = np.array(sf_combs)
+            sf_osc = [sf_out['Sf_Fosc'][0][i+1,j+1] for i,j in sf_combs]
+            if not isinstance(sf_osc, list):
+                outfosc = [0.] + [value for value in sf_osc]
+            else:
+                outfosc = [0.] + sf_osc
+            request.set('fosc', outfosc)
 
         if 'sts_mom' in request:
-            sf_out = self.reader(output, ['Sf_Fosc_6'], {'nstates': self.nstates})
+            sf_out = self.reader(output, ['Sf_Fosc'], {'nstates': self.nstates+self._sf_buffer_states})
+            sf_out = sf_out['Sf_Fosc']
+
             sf_combs = list(combinations(self.index,2))
             sts_mom = np.zeros((self.nstates, self.nstates), dtype=float)
             for i, j in sf_combs:
                 ii, ij = self.index.index(i), self.index.index(j)
-                sts_mom[ii, ij] = sf_out['Sf_Fosc_6'][0][i+1,j+1]
-                sts_mom[ij, ii] = sts_mom[ii, ij]
+                if ii < self.nstates and ij < self.nstates:
+                    sts_mom[ii, ij] = sf_out[0][i+1,j+1]
+                    sts_mom[ij, ii] = sts_mom[ii, ij]
             request.set('sts_mom', sts_mom)
 
         if 'transmom' in request:
@@ -654,68 +637,42 @@ class QChem(AbinitioBase):
                         outfosc = [0.] + [value[0] for value in out['fosc']]
                     request.set('fosc', outfosc)
             else:
-                if self.version == 5:
-                    settings['cis_n_roots'] = self.nstates + 1
-                    if self.sts_mom == True:
-                        settings = UpdatableDict(settings, self.sf_fosc_excited_state_settings)
-                    self._write_input(self.filename, settings.items())
-                    output = self.submit(self.filename)
-                    out = self.reader(output, ['Sf_ExcitedState'])
-                    s2_threshold = float(settings['cis_s2_thresh']/100)
-                    self.index = [i for i, s in enumerate(out['SF_S_2']) if s[0] < s2_threshold]
-                    sf_ene = [out['ExcitedState'][idx] for idx in self.index]
-                    if int(self.nstates - len(self.index)) == 0:
-                        self.ntriples = 1 #one triple state
-                        if not isinstance(sf_ene, list):
-                            outst = [sf_ene]
-                        else:
-                            outst = [en[0] for en in sf_ene]
-                        request.set('energy', outst)
-                    elif int(self.nstates - len(self.index)) < 0:
-                        self.ntriples = 0 #zero triple states
-                        if not isinstance(sf_ene, list):
-                            outst = [sf_ene]
-                        else:
-                            outst = [en[0] for en in sf_ene]
-                        request.set('energy', outst[:self.nstates])
+                settings['cis_n_roots'] = self.nstates + 1
+                if self.sts_mom == True:
+                    settings = UpdatableDict(settings, self.sf_fosc_excited_state_settings)
+                self._write_input(self.filename, settings.items())
+                output = self.submit(self.filename)
+                out = self.reader(output, ['Sf_ExcitedState'])
+                s2_threshold = float(self.cis_s2_thresh/100)
+                self.index = [i for i, s in enumerate(out['SF_S_2']) if s[0] < s2_threshold]
+                sf_ene = [out['ExcitedState'][idx] for idx in self.index]
+                if int(self.nstates - len(self.index)) == 0:
+                    self.ntriples = 1 #one triple state
+                    if not isinstance(sf_ene, list):
+                        outst = [sf_ene]
                     else:
-                        raise SystemExit("High spin contamination in more than one electronic states")
-                        #self.nstates = self.nstates + 1
-                    if 'fosc' in request:
-                        sf_out = self.reader(output, ['Sf_Fosc'], {'nstates': self.nstates + 1})
-                        sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
-                        sf_combs = np.array(sf_combs)
-                        sf_osc = [sf_out['Sf_Fosc'][0][i+1,j+1] for i,j in sf_combs]
-                        if not isinstance(sf_osc, list):
-                            outfosc = [0.] + [value for value in sf_osc]
-                        else:
-                            outfosc = [0.] + sf_osc
-                        request.set('fosc', outfosc)
-                elif self.version == 6:
-                    settings['cis_n_roots'] = self.nstates
-                    if self.sts_mom == True:
-                        settings = UpdatableDict(settings, self.sf_fosc_excited_state_settings)
-                    self._write_input(self.filename, settings.items())
-                    output = self.submit(self.filename)
-                    out = self.reader(output, ['ExcitedState6'])
+                        outst = [en[0] for en in sf_ene]
+                    request.set('energy', outst)
+                elif int(self.nstates - len(self.index)) < 0:
                     self.ntriples = 0 #zero triple states
-                    self.index = [i for i in range(self.nstates)]
-                    sf_ene = out['ExcitedState6']
                     if not isinstance(sf_ene, list):
                         outst = [sf_ene]
                     else:
                         outst = [en[0] for en in sf_ene]
                     request.set('energy', outst[:self.nstates])
-                    if 'fosc' in request:
-                        sf_out = self.reader(output, ['Sf_Fosc_6'], {'nstates': self.nstates})
-                        sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
-                        sf_combs = np.array(sf_combs)
-                        sf_osc = [sf_out['Sf_Fosc_6'][0][i+1,j+1] for i,j in sf_combs]
-                        if not isinstance(sf_osc, list):
-                            outfosc = [0.] + [value for value in sf_osc]
-                        else:
-                            outfosc = [0.] + sf_osc
-                        request.set('fosc', outfosc)
+                else:
+                    raise SystemExit("High spin contamination in more than one electronic states")
+                    #self.nstates = self.nstates + 1
+                if 'fosc' in request:
+                    sf_out = self.reader(output, ['Sf_Fosc'], {'nstates': self.nstates + 1})
+                    sf_combs = [i for i in list(combinations(self.index,2))[:len(sf_ene)-1]]
+                    sf_combs = np.array(sf_combs)
+                    sf_osc = [sf_out['Sf_Fosc'][0][i+1,j+1] for i,j in sf_combs]
+                    if not isinstance(sf_osc, list):
+                        outfosc = [0.] + [value for value in sf_osc]
+                    else:
+                        outfosc = [0.] + sf_osc
+                    request.set('fosc', outfosc)
 
         elif self.couplings == "wf_overlap":
             settings = UpdatableDict(self.settings, self.excited_state_settings, self.wf_overlap_settings)
@@ -763,10 +720,7 @@ class QChem(AbinitioBase):
         settings['scf_guess'] = 'read'
         settings['jobtype'] = 'force'
         settings['CIS_STATE_DERIV'] = state
-        if self.version == 5:
-            settings['cis_n_roots'] = self.nstates + 1
-        else:
-            settings['cis_n_roots'] = self.nstates
+        settings['cis_n_roots'] = self.nstates + self._sf_buffer_states
         self._write_input(self.filename, settings.items())
         #
         path = os.path.join(self.qcscratch, 'pysurf.gradient')
@@ -839,20 +793,11 @@ class QChem(AbinitioBase):
 
         output = self.submit_save(self.filename, 'pysurf.nacs')
 
-        if self.version == 5:
-            out = self.reader(output, ['nacs','NACouplingSFEx'], {'natoms': self.molecule.natoms})
-            if not isinstance(out['NACouplingSFEx'][0][0], list):
-                nac_sfex = [out['NACouplingSFEx']]
-            else:
-                nac_sfex = out['NACouplingSFEx']
-        elif self.version == 6:
-            out = self.reader(output, ['nacs','NACouplingEx'], {'natoms': self.molecule.natoms})
-            if not isinstance(out['NACouplingEx'][0][0], list):
-                nac_sfex = [out['NACouplingEx']]
-            else:
-                nac_sfex = out['NACouplingEx']
+        out = self.reader(output, ['nacs','NACouplingSFEx'], {'natoms': self.molecule.natoms})
+        if not isinstance(out['NACouplingSFEx'][0][0], list):
+            nac_sfex = [out['NACouplingSFEx']]
         else:
-            raise ValueError("Do not know version number")
+            nac_sfex = out['NACouplingSFEx']
         sf_range = []
         for i in range(self.nstates):
             for j in range(self.nstates):
@@ -927,10 +872,8 @@ class QChem(AbinitioBase):
         with open(filename, 'w') as f:
             f.write(self.tpl.render(chg=self.chg, mult=self.mult,
                     mol=self.molecule, remsection=remsection))
-            if self.ntriples == 1:
-                index = [i+1 for i in self.index]
-            elif self.ntriples == 0:
-                index = [i for i in range(1, (self.nstates + 1))]
+            #
+            index = [i+1 for i in self.index]
             coupled = self.sf_cou_states(index)
             f.write(self.dc.render(coupled=coupled))
             if self.basis == 'gen':
@@ -954,10 +897,6 @@ class QChem(AbinitioBase):
         cmd = f"{self.exe} -save -nt {self.nthreads} {filename} {output} {save_file} > save"
         os.system(cmd)
         return output
-
-
-
-
 
 #if __name__=='__main__':
 #    atomids = ["Cl","H"]
