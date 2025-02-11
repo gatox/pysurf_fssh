@@ -304,6 +304,8 @@ class QChem(AbinitioBase):
     couplings = nacs :: str :: nacs, wf_overlap
     spin_flip = :: str
     [method(tddft)]
+    scf_convergence = 7 :: int
+    cis_convergence = 6 :: int
     exchange = pbe0 :: str
     max_scf_cycles = 500 :: int
     xc_grid = 000075000302
@@ -346,6 +348,8 @@ class QChem(AbinitioBase):
     }
 
     excited_state_settings = {
+        'scf_convergence': 7,
+        'cis_convergence': 6,
         'cis_n_roots': 3,
         'cis_singlets': True,
         'cis_triplets': False,
@@ -384,8 +388,8 @@ class QChem(AbinitioBase):
         if spin_flip.value == "true":
             self._sf_buffer_states = spin_flip['buffer_states']
             self.cis_s2_thresh = spin_flip['cis_s2_thresh']
-            mult = mult + 2
-            print("Warning: Spin flip requested, changing multiplicity by +2 to ", mult)
+            if mult != 3:
+                print(f"Warning: Spin flip requested but Multiplicity == {mult} ")
         self.mult = mult
         self.filename = 'qchem.in'
         self.nstates = nstates
@@ -412,7 +416,7 @@ class QChem(AbinitioBase):
         self.spin_flip = config['spin_flip']['spin_flip']
         self.sts_mom = config['spin_flip']['sts_mom']
         if self.spin_flip is True:
-            self.settings['cis_s2_thresh'] = 500
+            self.settings['cis_s2_thresh'] = 300
         #for key, value in config['method'].items():
         #    self.settings[key] = value
 
@@ -534,6 +538,10 @@ class QChem(AbinitioBase):
 
     def _do_sf_energy(self, request):
         settings = UpdatableDict(self.settings, self.excited_state_settings, self.wf_overlap_settings)
+        #
+        if 'wf_overlap' not in request:
+            settings['cis_s2_thresh'] = self.cis_s2_thresh
+        #
         if self.icall == 1:
             settings['dump_wf_overlap'] = 1
         else:
@@ -720,6 +728,7 @@ class QChem(AbinitioBase):
         settings['scf_guess'] = 'read'
         settings['jobtype'] = 'force'
         settings['CIS_STATE_DERIV'] = state
+        settings['cis_s2_thresh'] = self.cis_s2_thresh
         settings['cis_n_roots'] = self.nstates + self._sf_buffer_states
         self._write_input(self.filename, settings.items())
         #
@@ -778,7 +787,8 @@ class QChem(AbinitioBase):
     def _do_sf_nacs(self, request):
         settings = UpdatableDict(self.settings, self.excited_state_settings, self.nonadiabatic_coupligs_settings)
         settings['cis_der_numstate'] = self.nstates
-        settings['cis_n_roots'] = self.nstates + 1
+        settings['cis_n_roots'] = self.nstates + self._sf_buffer_states
+        settings['cis_s2_thresh'] = self.cis_s2_thresh
         self._write_input_sf_nacs(self.filename, settings.items())
 
         #
