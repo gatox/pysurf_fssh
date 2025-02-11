@@ -2,6 +2,7 @@ from collections.abc import MutableMapping
 import shutil
 import os
 import numpy as np
+from pathlib import Path
 #
 from jinja2 import Template
 #
@@ -13,6 +14,20 @@ from ...system import Molecule
 #
 from scipy.special import comb
 from itertools import combinations
+
+
+def copy_dir(source, destination, remove=True):
+    source = Path(source)
+    destination = Path(destination)
+
+    if os.path.exists(destination) and remove is True:
+        shutil.rmtree(destination)
+
+    os.makedirs(destination, exist_ok=not remove)
+
+    for filename in source.iterdir():
+        shutil.copy2(filename, destination)
+
 
 qchem = """
 [SCFEnergy]
@@ -300,7 +315,8 @@ class QChem(AbinitioBase):
     set_iter = 150 :: int
     mem_static = 4000 :: int
     mem_total = 16000 :: int
-    sym_ignore = true :: bool
+    sym_ignore = true :: bool :: [true]
+    symmetry = false :: bool :: [false]
     couplings = nacs :: str :: nacs, wf_overlap
     spin_flip = :: str
     [method(tddft)]
@@ -740,13 +756,17 @@ class QChem(AbinitioBase):
         self._write_input(self.filename, settings.items())
         #
         path = os.path.join(self.qcscratch, 'pysurf.gradient')
-        if os.path.exists(path):
-            shutil.rmtree(path)
         energy_path = os.path.join(self.qcscratch, 'pysurf.energy')
         if not os.path.exists(energy_path):
             raise SystemExit("SF-Energy calculation has to be executed before a Gradient call!")
+        copy_dir(energy_path, path, remove=True)
+
+        #if os.path.exists(path):
+        #    shutil.rmtree(path)
+        #if not os.path.exists(energy_path):
+        #    raise SystemExit("SF-Energy calculation has to be executed before a Gradient call!")
         #
-        shutil.copytree(energy_path, path)
+        #shutil.copytree(energy_path, path)
         #
         output = self.submit_save(self.filename, 'pysurf.gradient')
         out = self.reader(output, ['CisGradient'], {'natoms': self.molecule.natoms})
@@ -800,11 +820,16 @@ class QChem(AbinitioBase):
 
         #
         path = os.path.join(self.qcscratch, 'pysurf.nacs')
-        if os.path.exists(path):
-            shutil.rmtree(path)
         energy_path = os.path.join(self.qcscratch, 'pysurf.energy')
         if not os.path.exists(energy_path):
-            raise SystemExit("SF-Energy calculation has to be executed before a NACs call!")
+            raise SystemExit("SF-Energy calculation has to be executed before a NACscall!")
+        copy_dir(energy_path, path, remove=True)
+        #path = os.path.join(self.qcscratch, 'pysurf.nacs')
+        #if os.path.exists(path):
+        #    shutil.rmtree(path)
+        #energy_path = os.path.join(self.qcscratch, 'pysurf.energy')
+        #if not os.path.exists(energy_path):
+        #    raise SystemExit("SF-Energy calculation has to be executed before a NACs call!")
         #
         shutil.copytree(energy_path, path)
 
