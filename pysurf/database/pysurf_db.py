@@ -54,7 +54,7 @@ class PySurfDB(Database):
         epot      = double :: (frame, one)
         etot      = double :: (frame, one)
         nacs      = double :: (frame, nstates, nstates, natoms, three)
-        sts_mom   = double :: (frame, nstates, nstates, one)
+        sts_mom   = double :: (frame, nstates, nstates)
     """)['variables']
 
     _variables_model = DatabaseGenerator("""
