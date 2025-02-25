@@ -119,5 +119,5 @@ class PropagatorBase(PropagatorFactory):
             self.output.info(f"{step:>10}{self.t_converter(time):>13.2f}{state:>8} {ekin:>11.6f} {epot:>11.6f} {etot:>11.6f} {dE:>11.6f}{' ':12}{round(self.get_runtime(), 1):>10}")
         else:
             grad = np.array(grad).flatten()
-            rmsd = grad.dot(grad)
+            rmsd = np.sqrt(grad.dot(grad)/grad.size)
             self.output.info(f"{step:>10}{self.t_converter(time):>13.2f}{state:>8} {ekin:>11.6f} {epot:>11.6f} {etot:>11.6f} {dE:>11.6f}{rmsd:11.6f}{round(self.get_runtime(), 1):>10}")
