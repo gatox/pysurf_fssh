@@ -2,6 +2,7 @@ import numpy as np
 
 from ..database import PySurfDB
 
+
 class DynDB(PySurfDB):
     variables_molecule = ['crd_equi', 'modes_equi', 'model', 'atomids', 'freqs_equi', 'masses', 'currstate', 'crd', 'veloc', 'energy', 'ekin', 'epot', 'etot', 'time']
     variables_model =  ['crd_equi', 'modes_equi', 'model', 'freqs_equi', 'masses', 'currstate', 'crd', 'veloc', 'energy', 'ekin', 'epot', 'etot', 'time']
@@ -47,5 +48,3 @@ class DynDB(PySurfDB):
         self.append('etot', etot)
         self.append('veloc', veloc)
         self.increase
-
-
