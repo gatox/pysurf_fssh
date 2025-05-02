@@ -52,7 +52,7 @@ Make sure to replace `/full/path/to/...` with the actual paths on your machine.
 
 Use the following branches for compatibility:
 
-    - pysurf_fssh: old_branch
+    - pysurf_fssh: vdf_old_branch
     - SAOOVQE: noise_old_saoovqe
 
 Switch branches as follows:
