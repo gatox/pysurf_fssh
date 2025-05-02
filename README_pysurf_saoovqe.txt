@@ -58,7 +58,7 @@ Use the following branches for compatibility:
 Switch branches as follows:
 
     cd pysurf_fssh
-    git checkout old_branch
+    git checkout vdf_old_branch
     cd ../SAOOVQE
     git checkout noise_old_saoovqe
 
