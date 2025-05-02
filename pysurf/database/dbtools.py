@@ -119,7 +119,7 @@ class DatabaseGenerator(Generator):
             'int': np.int64,
             'float': np.float64,
             'double': np.double,
-            'complex': np.complex_,
+            'complex': np.complex128,
         }
         typ = typ.strip().lower()
         
