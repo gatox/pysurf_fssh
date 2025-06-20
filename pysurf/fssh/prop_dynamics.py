@@ -12,6 +12,8 @@ class State(Colt):
     dt = 1.0 :: float
     mdsteps = 40000 :: float
     substeps = :: str 
+    # Nose-Hoover thermostat
+    thermostat = :: str
     # instate is the initial state: 0 = G.S, 1 = E_1, ...
     instate = 1 :: int
     nstates = 2 :: int
@@ -32,9 +34,18 @@ class State(Colt):
     number_vdf = false :: str :: false, nonlinear, linear
     [rescale_vel(nacs)]
     res_nacs = true :: bool
+    [thermostat(true)]
+    # friction coefficient
+    xi = 0.0 :: float
+    # target tempertaure in Kelvin
+    T = 300 :: float    
+    # degrees of freedom 
+    dof = nonlinear :: str :: nonlinear, linear
+    [thermostat(false)]
+    therm = false :: bool
     """
 
-    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps):
+    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps, thermostat):
         self.crd = crd
         self.natoms = len(crd)
         self.atomids = atomids
@@ -81,6 +92,17 @@ class State(Colt):
             self.natoms = 1
         elif isinstance(self.mass, np.ndarray) != True:
             self.natoms = np.array([self.mass])
+        if config['thermostat'] == "true":
+            self.thermostat = True 
+            self.xi = config['thermostat']['xi']
+            self.dof = config['thermostat']['dof']
+            self.t_target = config['thermostat']['T']*3.166811e-6
+            if self.dof == "nonlinear":
+                self.q_eff = (3*self.natoms-6)*self.t_target*(10*self.dt)**2
+            else:
+                self.q_eff = (3*self.natoms-5)*self.t_target*(10*self.dt)**2
+        else:
+            self.thermostat = False 
 
     @classmethod
     def from_config(cls, config):
@@ -99,7 +121,8 @@ class State(Colt):
         method = config['method']
         decoherence = config['decoherence']
         substeps = config['substeps']
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps)  
+        thermostat = config['thermostat']
+        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps, thermostat)  
 
     @staticmethod
     def read_db(db_file):
@@ -116,8 +139,8 @@ class State(Colt):
         return crd, vel, mass, atomids, model
 
     @classmethod
-    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps):
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps)
+    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps, thermostat):
+        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps, thermostat)
 
 if __name__=="__main__":
     State.from_questions(config = "prop.inp")
