@@ -742,9 +742,8 @@ class State(Colt):
     [thermostat(false)]
     therm = false :: bool
     """
-
-    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps):
-
+    
+    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps, thermostat):
         self.crd = crd
         self.natoms = len(crd)
         self.atomids = atomids
@@ -820,8 +819,8 @@ class State(Colt):
         method = config['method']
         decoherence = config['decoherence']
         substeps = config['substeps']
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps)  
-
+        thermostat = config['thermostat']
+        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps, thermostat)  
 
     @staticmethod
     def read_db(db_file):
@@ -838,9 +837,8 @@ class State(Colt):
         return crd, vel, mass, atomids, model
 
     @classmethod
-    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps):
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps)
-
+    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps, thermostat):
+        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, rev_vel_no_hop, coupling, method, decoherence, atomids, substeps, thermostat)
 
 class PrintResults:
  
