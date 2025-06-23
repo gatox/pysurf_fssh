@@ -195,8 +195,9 @@ class PySurfDB(Database):
         if model is False:
             self.set('atomids', system.atomids)
         self.set('masses', system.masses)
-        self.set('modes_equi', np.array([mode.displacements for mode in modes]))
-        self.set('freqs_equi', np.array([mode.freq for mode in modes]))
+	if modes is not None:
+            self.set('modes_equi', np.array([mode.displacements for mode in modes]))
+            self.set('freqs_equi', np.array([mode.freq for mode in modes]))
         # add equilibrium values
         self.set('crd_equi', system.crd)
 
