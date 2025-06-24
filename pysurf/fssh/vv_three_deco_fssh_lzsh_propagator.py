@@ -16,13 +16,13 @@ class VelocityVerletPropagator:
         self.t = self.state.t
         self.dt = self.state.dt
         self.t_max = self.dt*self.state.mdsteps 
+        self.results = PrintResults()
         if self.state.method == "Surface_Hopping":
             self.electronic = SurfaceHopping(self.state)
             if self.state.ncoeff[self.state.instate] == 0:
                 raise SystemExit("Wrong population for initial state")
         elif self.state.method == "Born_Oppenheimer":  
             self.electronic = BornOppenheimer(self.state)
-        self.results = PrintResults()
 
     def run(self):
         
@@ -507,6 +507,10 @@ class SurfaceHopping(BornOppenheimer):
         elif self.coupling == "semi_coup" and self.prob == "lz_nacs":
             needed_properties = ["energy", "gradient", "nacs"]
             self.spp = SurfacePointProvider.from_questions(["energy","gradient","nacs"], self.nstates, self.natoms, config ="spp.inp", atomids = state.atomids)
+	else:
+	    print("self.coupling = ", self.coupling)
+	    print("self.prop = ", self.prob)
+	    raise ValueError(f"Unsupported combination: coupling={self.coupling}, prob={self.prob}")
 
     def get_gradient(self, crd, curr_state):
         result = self.spp.request(crd, ['gradient'], states=[curr_state])
@@ -956,6 +960,7 @@ class PrintResults:
             self.gen_results.write(self.dash_bo + "\n")
             self.t_crd_vel_ene_popu.write(f"{head.t},{head.dis},{head.dis_vel},{head.ekin},"\
                     f"{head.epot},{head.etotal},{head.state}\n")
+	self.gen_results.flush()
 
     def print_var(self, t, dt, sur_hop, state):        
         var = namedtuple("var","steps t ekin epot etotal hopp random state")
@@ -971,6 +976,7 @@ class PrintResults:
             self.hopping.append(f"Hopping from state {self.instate} to state {state.instate}"\
                                 f" in step: {var.steps}, at the time step: {var.t}")
             self.instate = var.state
+	self.gen_results.flush()
 
     def print_bh_var(self, t, dt, state):        
         var = namedtuple("var","steps t dis dis_vel ekin epot etotal state")
@@ -980,6 +986,7 @@ class PrintResults:
                     f"{var.ekin:>15.3f} {var.epot:>17.4f} {var.etotal:>13.4f} {var.state:>11.0f}\n")
         self.t_crd_vel_ene_popu.write(f"{var.t:>0.3f},{var.dis:>0.8f},{var.dis_vel:>0.8f},"\
                     f"{var.ekin:>0.8f},{var.epot:>0.8f},{var.etotal:>0.8f},{var.state:>0.0f}\n")
+	self.gen_results.flush()
 
     def print_bottom(self, state):
         if state.method == "Surface_Hopping":
@@ -1007,7 +1014,6 @@ class PrintResults:
         time_seg %= 60
         seconds = time_seg
         self.gen_results.write(f"Total job time: {day:>0.0f}:{hour:>0.0f}:{minutes:>0.0f}:{seconds:>0.0f}\n")
-        
         self.gen_results.write(f"{ctime()}")
         self.gen_results.close()
 
