@@ -1,6 +1,6 @@
 # PySurf-FSSH: New Plugin for PySurf to Perform Nonadiabatic Dynamics using FSSH
 
-# <img src="https://github.com/gatox/pysurf_fssh/tree/master/docs/logo_pysurf_fssh.jpeg" height=150>
+# <img src="https://raw.githubusercontent.com/gatox/pysurf_fssh/master/docs/logo_pysurf_fssh.jpeg">
 
 #
 
@@ -147,13 +147,8 @@ conda env export > pysurf_saoovqe_env.yml
 
 ---
 
-# \:sunglasses: Authors
+# \:card_index: Credits
 
-Developed by Gaston G. Blesa and contributors.
+This work was supported by the Innovational Research Incentives Scheme Vidi 2017 with project number **016.Vidi.189.044**, (partly) funded by the **Dutch Research Council (NWO)**.
 
-Please cite the respective software components (PySurf-FSSH, SAOOVQE, Psi4, etc.) if used in academic work.
-
----
-
-License: Apache License 2.0
-
+This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [`audreyr/cookiecutter-pypackage`](https://github.com/audreyr/cookiecutter-pypackage) project template.
