@@ -53,11 +53,10 @@ export SAOOVQEDIR=/full/path/to/SAOOVQE
 # \:books: Purpose and Features
 
 - Surface hopping dynamics via the Fewest Switches Surface Hopping (FSSH) method
-- Support for ab initio on-the-fly dynamics (via SAOOVQE, PySCF, etc.)
+- Support for ab initio on-the-fly dynamics (via Q-Chem, OpenMolcas, etc.)
 - Support for model Hamiltonians (e.g., pyrazine LVC)
 - Decoherence corrections (e.g., EDC)
 - Velocity rescaling strategies (e.g., NACS-based)
-- Noise models for testing quantum simulation reliability
 - Thermostatting options for temperature control
 - NetCDF-based trajectory database (`results.db`)
 
