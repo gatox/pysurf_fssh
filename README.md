@@ -1,11 +1,11 @@
-# PySurf-FSSH with SAOOVQE Integration
+# PySurf-FSSH: New Plugin for PySurf to Perform Nonadiabatic Dynamics using FSSH
 
-| **Citation** |   |
-| ------------ | - |
+| **Citation** | [![DOI](https://pubs.acs.org/doi/10.1021/acs.jctc.4c00012)](https://pubs.acs.org/doi/10.1021/acs.jctc.4c00012) |
+| ------------ | ---------------------------------------------------------------------------------------------- |
 
 #
 
-PySurf-FSSH is a modular Python-based framework for performing nonadiabatic molecular dynamics using the fewest switches surface hopping (FSSH) method. It is designed to interface with a variety of electronic structure codes and model Hamiltonians, including quantum chemistry backends like SAOOVQE and analytical LVC models.
+PySurf-FSSH is an extension to the [PySurf](https://github.com/mfsjmenger/pysurf) software package for performing nonadiabatic molecular dynamics using the fewest switches surface hopping (FSSH) method. It is designed to interface with a variety of electronic structure codes and model Hamiltonians, including quantum chemistry backends like SAOOVQE and analytical LVC models.
 
 ---
 
