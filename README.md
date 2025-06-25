@@ -1,8 +1,10 @@
 # PySurf-FSSH: New Plugin for PySurf to Perform Nonadiabatic Dynamics using FSSH
 
+# <img src="https://github.com/gatox/pysurf_fssh/tree/master/docs/logo_pysurf_fssh.jpeg" height=150>
+
 #
 
-[PySurf-FSSH](https://doi.org/10.1021/acs.jctc.4c00012) is an extension to the [PySurf](https://github.com/mfsjmenger/pysurf) software package for performing nonadiabatic molecular dynamics using the fewest switches surface hopping (FSSH) method. It is designed to interface with a variety of electronic structure codes and model Hamiltonians, including quantum chemistry backends like SAOOVQE and analytical LVC models.
+[PySurf-FSSH](https://doi.org/10.1021/acs.jctc.4c00012) is an extension of the [PySurf](https://github.com/mfsjmenger/pysurf) software package that enables nonadiabatic molecular dynamics simulations using the Fewest Switches Surface Hopping (FSSH) method. It includes built-in interfaces with several quantum chemistry packages such as [Q-Chem](https://manual.q-chem.com/latest/), [OpenMolcas](https://gitlab.com/Molcas/OpenMolcas), [BAGEL](https://nubakery.org/), and the quantum algorithm State-Averaged Orbital-Optimized VQE ([SA-OO-VQE](https://github.com/qc2nl/SAOOVQE)). Thanks to PySurf’s flexible architecture, new interfaces can be added with minimal effort. As a demonstration, an analytical Linear Vibronic Coupling (LVC) model is also included, providing a fast and accessible way to test and extend PySurf-FSSH functionality.
 
 ---
 
