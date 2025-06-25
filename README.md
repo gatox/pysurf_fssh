@@ -1,6 +1,6 @@
 # PySurf-FSSH: New Plugin for PySurf to Perform Nonadiabatic Dynamics using FSSH
 
-| **Citation** | [![DOI](https://pubs.acs.org/doi/10.1021/acs.jctc.4c00012)](https://pubs.acs.org/doi/10.1021/acs.jctc.4c00012) |
+| **Citation** | [J. Chem. Theory Comput. 2024, 20, 7, 1792–1805](https://pubs.acs.org/doi/10.1021/acs.jctc.4c00012) |
 | ------------ | ---------------------------------------------------------------------------------------------- |
 
 #
