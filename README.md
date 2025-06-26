@@ -83,6 +83,23 @@ conda activate pysurf_saoovqe
 
     Replace `/full/path/to/` with the actual absolute paths on your system.
 
+5. **Recommended branches**
+
+    For proper compatibility when using **PySurf-FSSH** with **SAOOVQE**, we recommend using the following branches:
+
+    - **PySurf-FSSH**: use the `master` branch (default and recommended)  
+      > Note: The older `vdf_old_branch` is still compatible, but the included examples are tailored to features available in the `master`     branch.
+    - **SAOOVQE**: use the `noise_old_saoovqe` branch (required)
+
+    To switch branches:
+
+    ```bash
+    cd pysurf_fssh
+    git checkout master
+    
+    cd ../SAOOVQE
+    git checkout noise_old_saoovqe
+    ```
 ---
 
 If you are using another backend (like **OpenMolcas** or **Q-Chem**), install that backend according to its documentation. You can then configure `pysurf_fssh` to work with it by adapting the interface accordingly.
