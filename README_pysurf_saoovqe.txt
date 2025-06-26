@@ -142,8 +142,14 @@ The script will interactively request input via the terminal:
     res_nacs: True
 
 ---
+6. Run the Trajectories
+-------------------------------
+Example for one trajectory:
 
-6. Notes
+    cd prop/traj_00000000
+    python /path/to/pysurf_fssh/bin/run_trajectory.py
+
+7. Notes
 ---------
 
 - The Molden file must contain vibrational normal modes and can be generated using Q-Chem or OpenMolcas.
