@@ -136,8 +136,12 @@ For instance, `ch2nh_t_noise_f_therm` uses noise but no thermostat.
 ### How to run:
 
 ```bash
+cd ch2nh_t_noise_f_therm
 python /full/path/to/pysurf_fssh/bin/sampling.py
 python /full/path/to/pysurf_fssh/bin/setup_propagation.py
+
+# run the trajectory No.7
+cd prop/traj_00000007
 python /full/path/to/pysurf_fssh/bin/run_trajectory.py
 ```
 Replace `/full/path/to/` with the actual absolute paths on your system.
@@ -162,8 +166,12 @@ Two folders:
 ### How to run:
 
 ```bash
+cd pyrazine_lvc_model
 python /full/path/to/pysurf_fssh/bin/sampling.py
 python /full/path/to/pysurf_fssh/bin/setup_propagation.py
+
+# run the trajectory No. 3
+cd prop/traj_00000003
 python /full/path/to/pysurf_fssh/bin/run_trajectory.py
 ```
 Replace `/full/path/to/` with the actual absolute paths on your system.
