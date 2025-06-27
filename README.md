@@ -4,7 +4,7 @@
 
 #
 
-[PySurf-FSSH](https://doi.org/10.1021/acs.jctc.4c00012) is an extension of the [PySurf](https://github.com/mfsjmenger/pysurf) software package that enables nonadiabatic molecular dynamics simulations using the Tully’s fewest switches surface hopping (FSSH) scheme or the Landau–Zener surface hopping (LZSH) method. It includes built-in interfaces with several quantum chemistry packages such as [Q-Chem](https://manual.q-chem.com/latest/), [OpenMolcas](https://gitlab.com/Molcas/OpenMolcas), [BAGEL](https://nubakery.org/), and the quantum algorithm State-Averaged Orbital-Optimized VQE ([SA-OO-VQE](https://github.com/qc2nl/SAOOVQE)). Thanks to PySurf’s flexible architecture, new interfaces can be added with minimal effort. As a demonstration, an analytical Linear Vibronic Coupling (LVC) model is also included, providing a fast and accessible way to test and extend PySurf-FSSH functionality.
+[PySurf-FSSH](https://doi.org/10.1021/acs.jctc.4c00012) is an extension of the [PySurf](https://github.com/mfsjmenger/pysurf) software package that enables nonadiabatic molecular dynamics simulations using the Tully’s fewest switches surface hopping (FSSH) scheme or the Landau–Zener surface hopping (LZSH) method. It includes built-in interfaces with several quantum chemistry packages such as [Q-Chem](https://manual.q-chem.com/latest/), [OpenMolcas](https://gitlab.com/Molcas/OpenMolcas), [BAGEL](https://nubakery.org/), and the quantum algorithm State-Averaged Orbital-Optimized VQE ([SAOOVQE](https://github.com/qc2nl/SAOOVQE)). Thanks to PySurf’s flexible architecture, new interfaces can be added with minimal effort. As a demonstration, an analytical Linear Vibronic Coupling (LVC) model is also included, providing a fast and accessible way to test and extend PySurf-FSSH functionality.
 
 ---
 
@@ -30,7 +30,7 @@
 - Quantum simulation backends like [SAOOVQE](https://github.com/qc2nl/SAOOVQE)
 - Model Hamiltonians such as an analytical LVC model (included as an example)
 
-The following installation guide shows how to set up `pysurf_fssh` in combination with **SAOOVQE**, as an example backend. The installation order (first SAOOVQE, then PySurf-FSSH) is important for compatibility in this specific case.
+The following installation guide shows how to set up `pysurf_fssh` in combination with `SAOOVQE`, as an example backend. The installation order (first SAOOVQE, then PySurf-FSSH) is important for compatibility in this specific case.
 
 ### \:wrench: Example Setup: SAOOVQE + PySurf-FSSH
 
