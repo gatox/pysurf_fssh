@@ -88,7 +88,7 @@ conda activate pysurf_saoovqe
     For proper compatibility when using **PySurf-FSSH** with **SAOOVQE**, we recommend using the following branches:
 
     - **PySurf-FSSH**: use the `master` branch (default and recommended)  
-      > Note: The older `vdf_old_branch` is still compatible, but the included examples are tailored to features available in the `master`     branch.
+      > Note: The older `vdf_old_branch` is still compatible, but the included examples are tailored to features available in the `master` branch.
     - **SAOOVQE**: use the `noise_old_saoovqe` branch (required)
 
     To switch branches:
@@ -182,6 +182,7 @@ ncdump -v currstate results.db
 cat gen_results.out
 ```
 
+> Note: To change the number of trajectories, make sure to edit `sampling.inp` **before** running `sampling.py`. This will generate a new set of initial conditions. Likewise, the `spp.inp` and `prop.inp` files can be modified **before** running `setup_propagation.py`. If you have already run this setup and want to apply changes to **all** trajectories, you must delete the existing `prop` folder, update the input files, and rerun `setup_propagation.py`. If you prefer to change only specific trajectories, you can modify the input files individually within each trajectory folder without deleting the entire `prop` directory.
 ---
 
 # \:card_index: Credits
