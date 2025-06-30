@@ -22,6 +22,7 @@ from numpy import (
     pi,
     eye,
 )
+import numpy as np
 from random import uniform
 from time import time, ctime
 from collections import namedtuple
@@ -38,25 +39,28 @@ class VelocityVerletPropagator:
         self.t = self.state.t
         self.dt = self.state.dt
         self.t_max = self.dt * self.state.mdsteps
-        self.results = PrintResults()
+        self.results = PrintResults(state)
         if self.state.method == "Surface_Hopping":
             self.electronic = SurfaceHopping(self.state)
             if self.state.ncoeff[self.state.instate] == 0:
                 raise SystemExit("Wrong population for initial state")
         elif self.state.method == "Born_Oppenheimer":
             self.electronic = BornOppenheimer(self.state)
+        else:
+            raise SystemExit(f"Method '{self.state.method}' is not known!")
 
     def run(self):
 
         if self.t > self.t_max:
-            raise SystemExit("Noting to be done")
+            raise SystemExit("Nothing to be done")
 
         state = self.state
         results = self.results
+        # print the header
+        results.print_head(state)
         grad_old = self.electronic.setup(state)
         acce_old = self.accelerations(state, grad_old)
 
-        results.print_head(state)
         while self.t <= self.t_max:
             """updating coordinates"""
             crd_new = self.positions(state, acce_old, self.dt)
@@ -137,7 +141,7 @@ class BornOppenheimer:
         self.nstates = state.nstates
         self.natoms = state.natoms
         self.spp = SurfacePointProvider.from_questions(
-            ["energy", "gradient"],
+            ["energy", "gradient"] + state.save_properties,
             self.nstates,
             self.natoms,
             config="spp.inp",
@@ -154,6 +158,11 @@ class BornOppenheimer:
         result = self.spp.request(crd, ["energy"])
         return result["energy"]
 
+    def compute(self, properties, crd, curr_state=None, same_crd=False):
+        if curr_state is None:
+            return self.spp.request(crd, properties, same_crd=same_crd)
+        return self.spp.request(crd, properties, states=[curr_state], same_crd=same_crd)
+
     def cal_ekin(self, mass, vel):
         ekin = 0
         if isscalar(mass) and isscalar(vel):
@@ -164,17 +173,24 @@ class BornOppenheimer:
         return ekin
 
     def setup(self, state):
-        state.ene = self.get_energy(state.crd)
-        grad = self.get_gradient(state.crd, state.instate)
+        result = self.compute(
+            ["energy", "gradient"], state.crd, curr_state=state.instate
+        )
+        # state.ene = self.get_energy(state.crd)
+        state.ene = result["energy"]
+        # grad = self.get_gradient(state.crd, state.instate)
+        grad = result["gradient"]
         state.epot = state.ene[state.instate]
         state.ekin = self.cal_ekin(state.mass, state.vel)
         return grad
 
     def new_surface(self, state, results, crd_new, t, dt):
-        grad_new = self.get_gradient(crd_new, state.instate)
+        result = self.compute(["energy", "gradient"], crd_new, state.instate)
+        grad_new = result["gradient"]
         results.print_bh_var(t, dt, state)  # printing variables
         results.save_db(t, state)  # save variables in database
-        state.ene = self.get_energy(crd_new)
+        # state.ene = self.get_energy(crd_new)
+        state.ene = result["energy"]
         state.epot = state.ene[state.instate]
         state.ekin = self.cal_ekin(state.mass, state.vel)
         return grad_new
@@ -535,7 +551,7 @@ class RescaleVelocity:
             gama_ji = beta / alpha
             print("Vel. after ajust:", state.vel)
             if state.rev_vel_no_hop:
-                print("YES reverse velo no hop")
+                print("True, reverse velo no hop")
                 self.new_velocity(state, gama_ji, direct)
             print("Vel. after ajust:", state.vel)
             hop = "not"
@@ -561,42 +577,47 @@ class SurfaceHopping(BornOppenheimer):
 
     def __init__(self, state):
         self.nstates = state.nstates
+        print("nstates = ", self.nstates)
         self.mass = state.mass
         self.natoms = state.natoms
         self.coupling = state.coupling
         self.vel_old = zeros_like(state.vel)
         self.prob = state.prob
         if self.coupling == "nacs" and self.prob == "tully":
-            needed_properties = ["energy", "gradient", "nacs"]
+            needed_properties = ["energy", "gradient", "nacs"] + state.save_properties
             self.spp = SurfacePointProvider.from_questions(
-                ["energy", "gradient", "nacs"],
+                needed_properties,
                 self.nstates,
                 self.natoms,
                 config="spp.inp",
                 atomids=state.atomids,
             )
         elif self.coupling == "wf_overlap" and self.prob == "tully":
-            needed_properties = ["energy", "gradient", "wf_overlap"]
+            needed_properties = [
+                "energy",
+                "gradient",
+                "wf_overlap",
+            ] + state.save_properties
             self.spp = SurfacePointProvider.from_questions(
-                ["energy", "gradient", "wf_overlap"],
+                needed_properties,
                 self.nstates,
                 self.natoms,
                 config="spp.inp",
                 atomids=state.atomids,
             )
         elif self.coupling == "non_coup" and self.prob == "lz":
-            needed_properties = ["energy", "gradient"]
+            needed_properties = ["energy", "gradient"] + state.save_properties
             self.spp = SurfacePointProvider.from_questions(
-                ["energy", "gradient"],
+                needed_properties,
                 self.nstates,
                 self.natoms,
                 config="spp.inp",
                 atomids=state.atomids,
             )
         elif self.coupling == "semi_coup" and self.prob == "lz_nacs":
-            needed_properties = ["energy", "gradient", "nacs"]
+            needed_properties = ["energy", "gradient", "nacs"] + state.save_properties
             self.spp = SurfacePointProvider.from_questions(
-                ["energy", "gradient", "nacs"],
+                needed_properties,
                 self.nstates,
                 self.natoms,
                 config="spp.inp",
@@ -628,24 +649,71 @@ class SurfaceHopping(BornOppenheimer):
             result = self.spp.request(crd, ["nacs"])
             return result["nacs"]
 
-    def get_ene_cou_grad(self, crd, curr_state):
-        grad = self.get_gradient(crd, curr_state)
-        h_mch = self.get_energy(crd)
-        ene, u = linalg.eigh(diag(h_mch))
+    def get_coupling_property(self):
         if self.coupling == "nacs":
-            nac = self.get_coupling(crd)
-            ene_cou_grad = namedtuple("ene_cou_grad", "ene u nac grad")
-            return ene_cou_grad(ene, u, nac, grad)
+            return ["nacs"]
         elif self.coupling == "wf_overlap":
-            wf_ov = self.get_coupling(crd)
-            ene_cou_grad = namedtuple("ene_cou_grad", "ene u wf_ov grad")
-            return ene_cou_grad(ene, u, wf_ov, grad)
+            return ["wf_overlap"]
+        elif self.coupling == "semi_coup":
+            return ["nacs"]
+        return []
+
+    def compute(self, properties, crd, curr_state=None, same_crd=False):
+        if curr_state is None:
+            return self.spp.request(crd, properties, same_crd=same_crd)
+        return self.spp.request(crd, properties, states=[curr_state], same_crd=same_crd)
+
+    def get_ene_cou_grad(self, crd, curr_state, *, setup=False, properties=None):
+        if properties is None:
+            properties = []
+        else:
+            properties = properties.copy()
+        additional_properties = {prop: None for prop in properties}
+        properties += ["energy", "gradient"]
+        pro = self.get_coupling_property()
+        if setup is False or "nacs" in pro:
+            properties += pro
+
+        result = self.compute(properties, crd, curr_state)
+        # grad = self.get_gradient(crd, curr_state)
+        grad = result["gradient"]
+        # h_mch = self.get_energy(crd)
+        h_mch = result["energy"]
+        ene, u = linalg.eigh(diag(h_mch))
+
+        for prop in additional_properties:
+            if prop in ["energy", "gradient", "nacs", "wf_overlap"]:
+                continue
+            additional_properties[prop] = result[prop]
+
+        if setup is True:
+            if self.coupling == "nacs":
+                nac = result["nacs"]
+                ene_cou_grad = namedtuple("ene_cou_grad", "ene u nac grad additional")
+                return ene_cou_grad(ene, u, nac, grad, additional_properties)
+            elif self.coupling == "wf_overlap":
+                wf_ov = np.identity(self.nstates)
+                ene_cou_grad = namedtuple("ene_cou_grad", "ene u wf_ov grad additional")
+                return ene_cou_grad(ene, u, wf_ov, grad, additional_properties)
+            elif self.coupling in ("non_coup", "semi_coup"):
+                ene_cou_grad = namedtuple("ene_cou_grad", "ene grad additional")
+                return ene_cou_grad(ene, grad, additional_properties)
+
+        if self.coupling == "nacs":
+            nac = result["nacs"]
+            ene_cou_grad = namedtuple("ene_cou_grad", "ene u nac grad additional")
+            return ene_cou_grad(ene, u, nac, grad, additional_properties)
+        elif self.coupling == "wf_overlap":
+            wf_ov = result["wf_overlap"]
+            ene_cou_grad = namedtuple("ene_cou_grad", "ene u wf_ov grad additional")
+            return ene_cou_grad(ene, u, wf_ov, grad, additional_properties)
         elif self.coupling in ("non_coup", "semi_coup"):
-            ene_cou_grad = namedtuple("ene_cou_grad", "ene grad")
-            return ene_cou_grad(ene, grad)
+            ene_cou_grad = namedtuple("ene_cou_grad", "ene grad additional")
+            return ene_cou_grad(ene, grad, additional_properties)
+        raise ValueError
 
     def get_hopp_u_grad(self, crd, state):
-        grad = self.get_gradient(crd, state.instate)
+        grad = self.compute(["gradient"], crd, state.instate, same_crd=True)["gradient"]
         u = state.u
         u_grad = namedtuple("u_grad", "u grad")
         return u_grad(u, grad)
@@ -676,7 +744,10 @@ class SurfaceHopping(BornOppenheimer):
         return ekin
 
     def setup(self, state):
-        ene_cou_grad = self.get_ene_cou_grad(state.crd, state.instate)
+        ene_cou_grad = self.get_ene_cou_grad(
+            state.crd, state.instate, setup=True, properties=state.save_properties
+        )
+        state.additional = ene_cou_grad.additional
         propagator = Propagator(state)
         grad_old = propagator.grad(ene_cou_grad)
         state.ene = ene_cou_grad.ene
@@ -761,7 +832,11 @@ class SurfaceHopping(BornOppenheimer):
             return sur_hop(aleatory, prob, state_new)
 
     def new_surface(self, state, results, crd_new, t, dt):
-        ene_cou_grad = self.get_ene_cou_grad(crd_new, state.instate)
+        ene_cou_grad = self.get_ene_cou_grad(
+            state.crd, state.instate, properties=state.save_properties
+        )
+        print("additional = ", ene_cou_grad.additional)
+        state.additional = ene_cou_grad.additional
         if self.coupling in ("non_coup", "semi_coup"):
             # LZ scheme or LZ plus nacs scheme
             vk_old = None
@@ -772,7 +847,12 @@ class SurfaceHopping(BornOppenheimer):
             sur_hop = self.surface_hopping(state, ene_cou_grad, ise_prop.lz)
         elif self.coupling in ("nacs", "wf_overlap"):
             # Tully scheme
-            vk_old = self.vk_coupl_matrix(state.nac, self.vel_old)
+            if self.coupling == "nacs":
+                vk_old = self.vk_coupl_matrix(state.nac, self.vel_old)
+            elif self.coupling == "wf_overlap":
+                vk_old = ene_cou_grad.wf_ov
+            else:
+                raise SystemExit("")
             self.vel_old = state.vel
             propagator = Propagator(state)
             grad_probs = propagator.new_prob_grad(state, vk_old, ene_cou_grad, dt)
@@ -793,6 +873,8 @@ class SurfaceHopping(BornOppenheimer):
             state.vk = self.vk_coupl_matrix(state.nac, state.vel)
         elif self.coupling == "wf_overlap":
             state.vk = ene_cou_grad.wf_ov
+        else:
+            raise SystemExit("")
         if old_state == sur_hop.state_new:
             return grad_probs.grad_new
         else:
@@ -804,13 +886,13 @@ class SurfaceHopping(BornOppenheimer):
 
 class State(Colt):
 
-    _user_input = """ 
+    _user_input = """
     # chosen parameters
-    db_file = :: existing_file 
+    db_file = :: existing_file
     t = 0.0 :: float
     dt = 1.0 :: float
-    mdsteps = 40000 :: float
-    substeps = :: str 
+    mdsteps = 4000 :: float
+    substeps = :: str
     # Nose-Hoover thermostat
     thermostat = :: str
     # instate is the initial state: 0 = G.S, 1 = E_1, ...
@@ -819,12 +901,12 @@ class State(Colt):
     states = 0 1 :: ilist
     ncoeff = 0.0 1.0 :: flist
     # diagonal probability is not working yet
-    prob = tully :: str :: tully, lz, lz_nacs     
-    rescale_vel = :: str 
+    prob = tully :: str :: tully, lz, lz_nacs
+    rescale_vel = :: str
     rev_vel_no_hop = true :: bool :: true, false
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup
-    method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
-    decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
+    method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer
+    decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC
     [substeps(true)]
     n_substeps = 10 :: int
     [substeps(false)]
@@ -837,8 +919,8 @@ class State(Colt):
     # friction coefficient
     xi = 0.0 :: float
     # target tempertaure in Kelvin
-    T = 300 :: float    
-    # degrees of freedom 
+    T = 300 :: float
+    # degrees of freedom
     dof = nonlinear :: str :: nonlinear, linear
     [thermostat(false)]
     therm = false :: bool
@@ -885,7 +967,7 @@ class State(Colt):
         self.states = states
         self.ncoeff = ncoeff
         self.prob = prob
-        self.rescale_vel = config["rescale_vel"].value
+        self.rescale_vel = rescale_vel
         if config["rescale_vel"] == "momentum":
             self.reduced_kene = config["rescale_vel"]["number_vdf"]
         self.coupling = coupling
@@ -1036,21 +1118,125 @@ class State(Colt):
 
 class PrintResults:
 
-    def __init__(self):
+    def __init__(self, state):
         self.large = 110
         self.large_bo = 108
         self.dash = "-" * self.large
         self.dash_bo = "-" * self.large_bo
         self.gen_results = open("gen_results.out", "w")
+        self.db = self._setup_db(state)
         self.hopping = []
         self.tra_time = time()
 
+    def _setup_db(self, state):
+        nstates = state.nstates
+        model = state.model
+        nmodes = len(state.mass)
+        prob = state.prob
+        save_properties = state.save_properties
+        if isscalar(state.crd):
+            natoms = 1
+        else:
+            natoms = len(state.crd)
+        if state.method == "Surface_Hopping" and prob == "tully":
+            data = [
+                "crd",
+                "veloc",
+                "energy",
+                "time",
+                "ekin",
+                "epot",
+                "etot",
+                "populations",
+                "currstate",
+            ] + save_properties
+            if model:
+                db = PySurfDB.generate_database(
+                    "results.db",
+                    data=data,
+                    dimensions={"nmodes": nmodes, "nstates": nstates},
+                    model=model,
+                )
+            else:
+                db = PySurfDB.generate_database(
+                    "results.db",
+                    data=data,
+                    dimensions={"natoms": natoms, "nstates": nstates},
+                    model=model,
+                )
+        elif state.method == "Surface_Hopping" and prob in ("lz", "lz_nacs"):
+            data = [
+                "crd",
+                "veloc",
+                "energy",
+                "time",
+                "ekin",
+                "epot",
+                "etot",
+                "currstate",
+            ] + save_properties
+            if model:
+                db = PySurfDB.generate_database(
+                    "results.db",
+                    data=data,
+                    dimensions={"nmodes": nmodes, "nstates": nstates},
+                    model=model,
+                )
+            else:
+                db = PySurfDB.generate_database(
+                    "results.db",
+                    data=data,
+                    dimensions={"natoms": natoms, "nstates": nstates},
+                    model=model,
+                )
+        elif state.method == "Born_Oppenheimer":
+            data = [
+                "crd",
+                "veloc",
+                "energy",
+                "time",
+                "ekin",
+                "epot",
+                "etot",
+            ] + save_properties
+            db = PySurfDB.generate_database(
+                "results.db",
+                data=data,
+                dimensions={"natoms": natoms, "nstates": nstates},
+                model=model,
+            )
+        else:
+            raise ValueError("Could not open db")
+        return db
+
+    def __del__(self):
+        self.gen_results.close()
+
     def norm_coeff(self, ncoeff):
-        if isinstance(ncoeff, ndarray) != True:
+        if not isinstance(ncoeff, ndarray):
             ncoeff = array(ncoeff)
         return diag(outer(ncoeff, ncoeff.conj()).real)
 
     def save_db(self, t, state):
+        prob = state.prob
+        if state.method == "Surface_Hopping" and prob == "tully":
+            self.db.set("currstate", state.instate)
+            self.db.set("populations", self.norm_coeff(state.ncoeff))
+        elif state.method == "Surface_Hopping" and prob in ("lz", "lz_nacs"):
+            self.db.set("currstate", state.instate)
+        elif state.method == "Born_Oppenheimer":
+            pass
+        self.db.set("crd", state.crd)
+        self.db.set("veloc", state.vel)
+        self.db.set("energy", state.ene)
+        self.db.set("time", t)
+        self.db.set("ekin", state.ekin)
+        self.db.set("epot", state.epot)
+        self.db.set("etot", state.ekin + state.epot)
+        state.save_additional(self.db)
+        self.db.increase  # It increases the frame
+
+    def save_db_old(self, t, state):
         nstates = state.nstates
         model = state.model
         nmodes = len(state.mass)
@@ -1094,8 +1280,8 @@ class PrintResults:
                     dimensions={"natoms": natoms, "nstates": nstates},
                     model=model,
                 )
-            db.set("currstate", state.instate)
-            db.set("fosc", self.norm_coeff(state.ncoeff))
+            self.db.set("currstate", state.instate)
+            self.db.set("fosc", self.norm_coeff(state.ncoeff))
         elif state.method == "Surface_Hopping" and prob in ("lz", "lz_nacs"):
             if model:
                 db = PySurfDB.generate_database(
@@ -1129,7 +1315,7 @@ class PrintResults:
                     dimensions={"natoms": natoms, "nstates": nstates},
                     model=model,
                 )
-            db.set("currstate", state.instate)
+            self.db.set("currstate", state.instate)
         elif state.method == "Born_Oppenheimer":
             db = PySurfDB.generate_database(
                 "results.db",
@@ -1353,8 +1539,9 @@ class PrintResults:
         self.gen_results.write(
             f"Total job time: {day:>0.0f}:{hour:>0.0f}:{minutes:>0.0f}:{seconds:>0.0f}\n"
         )
+
         self.gen_results.write(f"{ctime()}")
-        self.gen_results.close()
+        # self.gen_results.close()
 
 
 if __name__ == "__main__":
