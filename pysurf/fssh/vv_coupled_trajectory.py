@@ -23,7 +23,7 @@ from numpy import (
     eye,
 )
 from random import uniform
-from time import (time, ctime)
+from time import time, ctime
 from collections import namedtuple
 from abc import abstractmethod
 from pysurf.spp import SurfacePointProvider
