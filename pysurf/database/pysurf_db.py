@@ -50,11 +50,13 @@ class PySurfDB(Database):
         fosc      = double :: (frame, nstates)
         transmom  = double :: (frame, nstates, three)
         currstate = double :: (frame, one)
+        populations = double :: (frame, nstates)
         time      = double :: (frame, one)
         ekin      = double :: (frame, one)
         epot      = double :: (frame, one)
         etot      = double :: (frame, one)
         nacs      = double :: (frame, nstates, nstates, natoms, three)
+        sts_mom   = double :: (frame, nstates, nstates)
     """
     )["variables"]
 
@@ -72,6 +74,7 @@ class PySurfDB(Database):
         accel     = double :: (frame, nmodes)
         energy    = double :: (frame, nstates)
         gradient  = double :: (frame, nactive, nmodes)
+        populations = double :: (frame, nstates)
         fosc      = double :: (frame, nstates)
         currstate = double :: (frame, one)
         time      = double :: (frame, one)
