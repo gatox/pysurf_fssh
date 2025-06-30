@@ -1148,7 +1148,6 @@ class PrintResults:
                 "epot",
                 "etot",
                 "populations",
-                "fosc",
                 "currstate",
             ] + save_properties
             if model:
