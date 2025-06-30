@@ -29,8 +29,8 @@ class LandauZener(PropagatorBase):
         else:
             self.setup_from_db()
 
-        if self.start > self.nsteps:
-            self.logger.info("Dynamics already performed for more steps!")
+        if self.start >= self.nsteps:
+            self.logger.info("Dynamics already performed!")
             return
 
         for istep in range(self.start, nsteps + 1):
@@ -79,8 +79,16 @@ class LandauZener(PropagatorBase):
             # write step info
             time = dt * istep
             diff = self.etot - self.etot_old
+            grad = self.data["gradient"][self.iactive]
             self.output_step(
-                istep, time, self.iactive, self.ekin, self.epot, self.etot, diff
+                istep,
+                time,
+                self.iactive,
+                self.ekin,
+                self.epot,
+                self.etot,
+                diff,
+                grad=grad,
             )
             self.db.add_step(
                 time, self.data, self.v, self.iactive, self.ekin, self.epot, self.etot
@@ -112,7 +120,8 @@ class LandauZener(PropagatorBase):
         self.data = self.call_spp()
         self.e_curr = self.data["energy"]
 
-        self.a = get_acceleration(self.data["gradient"][self.iactive], self.masses)
+        grad = self.data["gradient"][self.iactive]
+        self.a = get_acceleration(grad, self.masses)
         #
         self.ekin = calc_ekin(self.masses, self.v)
         self.epot = self.e_curr[self.iactive]
@@ -125,7 +134,7 @@ class LandauZener(PropagatorBase):
         time = istep * self.dt
         diff = self.etot - self.etot_old
         self.output_step(
-            istep, time, self.iactive, self.ekin, self.epot, self.etot, diff
+            istep, time, self.iactive, self.ekin, self.epot, self.etot, diff, grad=grad
         )
         self.db.add_step(
             time, self.data, self.v, self.iactive, self.ekin, self.epot, self.etot
@@ -142,8 +151,9 @@ class LandauZener(PropagatorBase):
             self.e_curr = self.data["energy"]
 
             # update acceleration
+            grad = self.data["gradient"][self.iactive]
             self.a_old = self.a
-            self.a = get_acceleration(self.data["gradient"][self.iactive], self.masses)
+            self.a = get_acceleration(grad, self.masses)
             self.v = vv_vstep(self.v, self.a_old, self.a, self.dt)
 
             self.etot_old = self.etot
@@ -155,7 +165,14 @@ class LandauZener(PropagatorBase):
             time = istep * self.dt
             diff = self.etot - self.etot_old
             self.output_step(
-                istep, time, self.iactive, self.ekin, self.epot, self.etot, diff
+                istep,
+                time,
+                self.iactive,
+                self.ekin,
+                self.epot,
+                self.etot,
+                diff,
+                grad=grad,
             )
             self.db.add_step(
                 time, self.data, self.v, self.iactive, self.ekin, self.epot, self.etot
