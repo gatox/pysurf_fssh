@@ -294,7 +294,7 @@ def get_spp(
     nghost_states=0,
     atomids=None,
     logger=None,
-    checkonly=True,
+    check_only=True,
 ):
     """Initialize a Surface point provider from a config file
 
@@ -331,5 +331,5 @@ def get_spp(
         nghost_states=nghost_states,
         atomids=atomids,
         config=configfile,
-        checkonly=checkonly,
+        check_only=check_only,
     )
