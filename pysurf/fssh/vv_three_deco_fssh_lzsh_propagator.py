@@ -545,10 +545,15 @@ class RescaleVelocity:
         if (beta**2 + 4 * alpha * diff) < 0.0:
             """
             If this condition is satisfied, there is not hopping and
-            then the nuclear velocity simply are reversed.
+            then the nuclear velocity is reversed or not according to
+            the criteria in prop.inp.
             """
             gama_ji = beta / alpha
-            self.new_velocity(state, gama_ji, direct)
+            print("Vel. after ajust:", state.vel)
+            if state.rev_vel_no_hop:
+                print("True, reverse velo no hop")
+                self.new_velocity(state, gama_ji, direct)
+            print("Vel. after ajust:", state.vel)
             hop = "not"
             return hop
         else:
@@ -621,7 +626,9 @@ class SurfaceHopping(BornOppenheimer):
         else:
             print("self.coupling = ", self.coupling)
             print("self.prop = ", self.prob)
-            raise
+            raise ValueError(
+                f"Unsupported combination: coupling={self.coupling}, prob={self.prob}"
+            )
 
     def get_gradient(self, crd, curr_state):
         result = self.spp.request(crd, ["gradient"], states=[curr_state])
@@ -896,6 +903,7 @@ class State(Colt):
     # diagonal probability is not working yet
     prob = tully :: str :: tully, lz, lz_nacs
     rescale_vel = :: str
+    rev_vel_no_hop = true :: bool :: true, false
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC
@@ -934,6 +942,7 @@ class State(Colt):
         ncoeff,
         prob,
         rescale_vel,
+        rev_vel_no_hop,
         coupling,
         method,
         decoherence,
@@ -967,6 +976,7 @@ class State(Colt):
                 raise SystemExit(
                     "Wrong coupling method or wrong rescaling velocity approach"
                 )
+        self.rev_vel_no_hop = rev_vel_no_hop
         self.method = method
         self.decoherence = decoherence
         if config["substeps"] == "true":
@@ -1012,6 +1022,7 @@ class State(Colt):
         ncoeff = config["ncoeff"]
         prob = config["prob"]
         rescale_vel = config["rescale_vel"]
+        rev_vel_no_hop = config["rev_vel_no_hop"]
         coupling = config["coupling"]
         method = config["method"]
         decoherence = config["decoherence"]
@@ -1032,6 +1043,7 @@ class State(Colt):
             ncoeff,
             prob,
             rescale_vel,
+            rev_vel_no_hop,
             coupling,
             method,
             decoherence,
@@ -1071,6 +1083,7 @@ class State(Colt):
         ncoeff,
         prob,
         rescale_vel,
+        rev_vel_no_hop,
         coupling,
         method,
         decoherence,
@@ -1093,6 +1106,7 @@ class State(Colt):
             ncoeff,
             prob,
             rescale_vel,
+            rev_vel_no_hop,
             coupling,
             method,
             decoherence,
