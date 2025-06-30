@@ -188,7 +188,8 @@ class LVC(Model):
         for prop in request:
             if prop == 'energy':
                 energy = self._energy(Q, adiabatic = adiabatic)
-                request.set('energy', energy[request.states])
+                #request.set('energy', energy[request.states])
+                request.set('energy', energy)
             if prop == 'gradient':
                 grad = self._gradient(Q, adiabatic = adiabatic)
                 request.set('gradient', grad[request.states,:])
