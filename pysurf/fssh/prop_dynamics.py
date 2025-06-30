@@ -3,6 +3,7 @@ import numpy as np
 from ..database import PySurfDB
 from colt import Colt
 
+
 class State(Colt):
 
     _user_input = """ 
@@ -45,7 +46,29 @@ class State(Colt):
     therm = false :: bool
     """
 
-    def __init__(self, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps, thermostat):
+    def __init__(
+        self,
+        config,
+        crd,
+        vel,
+        mass,
+        model,
+        t,
+        dt,
+        mdsteps,
+        instate,
+        nstates,
+        states,
+        ncoeff,
+        prob,
+        rescale_vel,
+        coupling,
+        method,
+        decoherence,
+        atomids,
+        substeps,
+        thermostat,
+    ):
         self.crd = crd
         self.natoms = len(crd)
         self.atomids = atomids
@@ -63,20 +86,22 @@ class State(Colt):
         self.states = states
         self.ncoeff = ncoeff
         self.prob = prob
-        self.rescale_vel = config['rescale_vel'].value
-        if config['rescale_vel'] == "momentum":
-            self.reduced_kene = config['rescale_vel']['number_vdf']
+        self.rescale_vel = config["rescale_vel"].value
+        if config["rescale_vel"] == "momentum":
+            self.reduced_kene = config["rescale_vel"]["number_vdf"]
         self.coupling = coupling
-        if config['rescale_vel'] == "nacs":
+        if config["rescale_vel"] == "nacs":
             if self.coupling in ("wf_overlap, non_coup"):
-                raise SystemExit("Wrong coupling method or wrong rescaling velocity approach")
+                raise SystemExit(
+                    "Wrong coupling method or wrong rescaling velocity approach"
+                )
         self.method = method
         self.decoherence = decoherence
-        if config['substeps'] == "true":
-            self.substeps = True 
-            self.n_substeps = config['substeps']['n_substeps']
+        if config["substeps"] == "true":
+            self.substeps = True
+            self.n_substeps = config["substeps"]["n_substeps"]
         else:
-            self.substeps = False 
+            self.substeps = False
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
@@ -91,20 +116,20 @@ class State(Colt):
             self.natoms = 1
         elif isinstance(self.mass, np.ndarray) != True:
             self.natoms = np.array([self.mass])
-        if config['thermostat'] == "true":
-            self.thermostat = True 
-            self.xi = config['thermostat']['xi']
-            self.dof = config['thermostat']['dof']
-            self.t_target = config['thermostat']['T']*3.166811e-6
+        if config["thermostat"] == "true":
+            self.thermostat = True
+            self.xi = config["thermostat"]["xi"]
+            self.dof = config["thermostat"]["dof"]
+            self.t_target = config["thermostat"]["T"] * 3.166811e-6
             if self.dof == "nonlinear":
-                self.q_eff = (3*self.natoms-6)*self.t_target*(10*self.dt)**2
+                self.q_eff = (3 * self.natoms - 6) * self.t_target * (10 * self.dt) ** 2
             else:
-                self.q_eff = (3*self.natoms-5)*self.t_target*(10*self.dt)**2
+                self.q_eff = (3 * self.natoms - 5) * self.t_target * (10 * self.dt) ** 2
         else:
-            self.thermostat = False 
+            self.thermostat = False
 
-        if config['save_properties'] is not None:
-            self.save_properties = [config['save_properties']]
+        if config["save_properties"] is not None:
+            self.save_properties = [config["save_properties"]]
         else:
             self.save_properties = []
 
@@ -119,30 +144,51 @@ class State(Colt):
     @classmethod
     def from_config(cls, config):
         crd, vel, mass, atomids, model = cls.read_db(config["db_file"])
-        t = config['t']
-        dt = config['dt']
-        mdsteps = config['mdsteps']
-        instate = config['instate']
-        nstates = config['nstates']
-        states = config['states']
-        ncoeff = config['ncoeff']
-        prob = config['prob']
-        rescale_vel = config['rescale_vel']
-        coupling = config['coupling']
-        method = config['method']
-        decoherence = config['decoherence']
-        substeps = config['substeps']
-        thermostat = config['thermostat']
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps, thermostat)  
+        t = config["t"]
+        dt = config["dt"]
+        mdsteps = config["mdsteps"]
+        instate = config["instate"]
+        nstates = config["nstates"]
+        states = config["states"]
+        ncoeff = config["ncoeff"]
+        prob = config["prob"]
+        rescale_vel = config["rescale_vel"]
+        coupling = config["coupling"]
+        method = config["method"]
+        decoherence = config["decoherence"]
+        substeps = config["substeps"]
+        thermostat = config["thermostat"]
+        return cls(
+            config,
+            crd,
+            vel,
+            mass,
+            model,
+            t,
+            dt,
+            mdsteps,
+            instate,
+            nstates,
+            states,
+            ncoeff,
+            prob,
+            rescale_vel,
+            coupling,
+            method,
+            decoherence,
+            atomids,
+            substeps,
+            thermostat,
+        )
 
     @staticmethod
     def read_db(db_file):
         db = PySurfDB.load_database(db_file, read_only=True)
-        crd = np.copy(db['crd'][0])
-        vel = np.copy(db['veloc'][0])
-        atomids = np.copy(db['atomids'])
-        mass = np.copy(db['masses'])
-        model = np.copy(db['model'])
+        crd = np.copy(db["crd"][0])
+        vel = np.copy(db["veloc"][0])
+        atomids = np.copy(db["atomids"])
+        mass = np.copy(db["masses"])
+        model = np.copy(db["model"])
         if model == 1:
             model = True
         else:
@@ -150,8 +196,52 @@ class State(Colt):
         return crd, vel, mass, atomids, model
 
     @classmethod
-    def from_initial(cls, config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps, thermostat):
-        return cls(config, crd, vel, mass, model, t, dt, mdsteps, instate, nstates, states, ncoeff, prob, rescale_vel, coupling, method, decoherence, atomids, substeps, thermostat)
+    def from_initial(
+        cls,
+        config,
+        crd,
+        vel,
+        mass,
+        model,
+        t,
+        dt,
+        mdsteps,
+        instate,
+        nstates,
+        states,
+        ncoeff,
+        prob,
+        rescale_vel,
+        coupling,
+        method,
+        decoherence,
+        atomids,
+        substeps,
+        thermostat,
+    ):
+        return cls(
+            config,
+            crd,
+            vel,
+            mass,
+            model,
+            t,
+            dt,
+            mdsteps,
+            instate,
+            nstates,
+            states,
+            ncoeff,
+            prob,
+            rescale_vel,
+            coupling,
+            method,
+            decoherence,
+            atomids,
+            substeps,
+            thermostat,
+        )
 
-if __name__=="__main__":
-    State.from_questions(config = "prop.inp")
+
+if __name__ == "__main__":
+    State.from_questions(config="prop.inp")
