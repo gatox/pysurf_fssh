@@ -1,4 +1,5 @@
 n_traj = -1
+sampling_input = sampling.inp
 sampling_db = sampling.db
 spp = spp.inp
 initial state = 1

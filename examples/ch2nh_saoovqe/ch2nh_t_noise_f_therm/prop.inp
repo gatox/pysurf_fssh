@@ -14,6 +14,7 @@ rev_vel_no_hop = true
 coupling = nacs
 method = Surface_Hopping
 decoherence = EDC
+save_properties = 
 
 [substeps(false)]
 n_substeps = false

@@ -1,4 +1,4 @@
-n_conditions = 10
+n_conditions_max = 10
 method = Wigner
 sampling_db = sampling.db
 

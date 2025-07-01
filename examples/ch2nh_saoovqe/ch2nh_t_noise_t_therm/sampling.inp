@@ -1,4 +1,4 @@
-n_conditions = 10
+n_conditions_max = 10
 method = Wigner
 sampling_db = sampling.db
 
@@ -6,4 +6,4 @@ sampling_db = sampling.db
 from = molden
 
 [method(Wigner)::from(molden)]
-moldenfile = CH2NH_molden_omolcas
+moldenfile = ch2nh_molden_omolcas
