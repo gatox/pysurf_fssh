@@ -19,6 +19,7 @@ from .normalmodes import Mode
 
 #
 from colt import Colt
+from colt.answers import SubquestionsAnswer
 
 
 class SamplingDB(PySurfDB):
@@ -162,13 +163,6 @@ class SamplingDB(PySurfDB):
             return self.condition(crd, veloc, state)
         return self.condition(crd)
 
-    def get_config(self):
-        config = {}
-        config["n_conditions"] = self.nconditions
-        config["method"] = "Wigner"
-        config["model"] = self.model
-        return config
-
     @property
     def dynsampling(self):
         if "veloc" in self.info["variables"]:
@@ -186,29 +180,3 @@ class SamplingDB(PySurfDB):
     @property
     def nconditions(self):
         return len(self["crd"])
-
-
-#    @classmethod
-#    def _get_method_from_db(cls, db):
-#        _method_number = db['method']
-#        method = cls._get_method_from_number(_method_number)
-#        return method
-#
-#    @staticmethod
-#    def _get_method_from_number(numbers):
-#        method = ''
-#        for num in numbers:
-#            if num != 0:
-#                method += chr(num)
-#            else:
-#                break
-#        return method
-#
-#    @staticmethod
-#    def _get_number_from_method(method):
-#        #length of numpy arry has to be consistent with length in settings
-#        res = np.zeros(100, int)
-#        for index, letter in enumerate(method):
-#            res[index] = ord(letter)
-#        return res
-#

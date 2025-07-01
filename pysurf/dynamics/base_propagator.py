@@ -46,7 +46,14 @@ class PropagatorBase(PropagatorFactory):
         return time.perf_counter() - self.start_time
 
     def __init__(
-        self, spp_inp, sampling, nstates, nghost_states, restart=True, logger=None
+        self,
+        spp_inp,
+        sampling,
+        nstates,
+        nghost_states,
+        restart=True,
+        logger=None,
+        properties=None,
     ):
         """Setup surface hopping using config in `configfile`
         and a SurfacePointProvider (SPP) abstract class
@@ -64,9 +71,10 @@ class PropagatorBase(PropagatorFactory):
         else:
             self.logger = logger
 
-        #       for prop in properties:
-        #           if prop not in self.properties:
-        #               self.properties += [prop]
+        if properties is not None:
+            for prop in properties:
+                if prop not in self.properties:
+                    self.properties += [prop]
 
         self.init = sampling.get_condition(0)
         # setup SPP
@@ -136,6 +144,13 @@ class PropagatorBase(PropagatorFactory):
         self.output.info("#" + ("=" * 101))
 
     def output_step(self, step, time, state, ekin, epot, etot, dE, grad=None):
-        self.output.info(
-            f"{step:>10}{self.t_converter(time):>13.2f}{state:>8} {ekin:>11.6f} {epot:>11.6f} {etot:>11.6f} {dE:>11.6f}{' ':12}{round(self.get_runtime(), 1):>10}"
-        )
+        if grad is None:
+            self.output.info(
+                f"{step:>10}{self.t_converter(time):>13.2f}{state:>8} {ekin:>11.6f} {epot:>11.6f} {etot:>11.6f} {dE:>11.6f}{' ':12}{round(self.get_runtime(), 1):>10}"
+            )
+        else:
+            grad = np.array(grad).flatten()
+            rmsd = np.sqrt(grad.dot(grad) / grad.size)
+            self.output.info(
+                f"{step:>10}{self.t_converter(time):>13.2f}{state:>8} {ekin:>11.6f} {epot:>11.6f} {etot:>11.6f} {dE:>11.6f}{rmsd:11.6f}{round(self.get_runtime(), 1):>10}"
+            )

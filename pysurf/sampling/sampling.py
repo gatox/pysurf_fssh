@@ -17,8 +17,8 @@ class Sampling(Colt):
     """
 
     _user_input = """
-    # Number of Calculations
-    n_conditions = 100 :: int
+    # Maximium Number of Samples
+    n_conditions_max = 100 :: int
 
     method = :: str
 
@@ -38,7 +38,7 @@ class Sampling(Colt):
         )
 
     @classmethod
-    def from_config(cls, config, logger=None):
+    def from_config(cls, config, logger=None, fillit=False):
         if exists_and_isfile(config["sampling_db"]):
             logger.info(f"Found existing database {config['sampling_db']}")
             db = SamplingDB.from_db(config["sampling_db"])
@@ -51,10 +51,12 @@ class Sampling(Colt):
             sampler = cls._get_sampler(config["method"], start=0)
             logger.info(f"Creating new database {config['sampling_db']}")
             db = SamplingDB.from_sampler(config, sampler)
-        return cls(config, db, db.dynsampling, sampler=sampler, logger=logger)
+        return cls(
+            config, db, db.dynsampling, sampler=sampler, logger=logger, fillit=fillit
+        )
 
     @classmethod
-    def from_inputfile(cls, inputfile):
+    def from_inputfile(cls, inputfile, fillit=True):
         logger = get_logger("sampling.log", "sampling")
         # Generate the config
         if exists_and_isfile(inputfile):
@@ -63,11 +65,12 @@ class Sampling(Colt):
             config = cls.generate_input(inputfile)
         logger.header("SAMPLING", config)
         logger.info(f"Took information from inputfile {inputfile}")
-        return cls.from_config(config, logger=logger)
+        return cls.from_config(config, logger=logger, fillit=fillit)
 
     @classmethod
     def create_db(
         cls,
+        sampling_config,
         dbfilename,
         variables,
         dimensions,
@@ -76,6 +79,7 @@ class Sampling(Colt):
         model=False,
         sp=False,
         logger=None,
+        fillit=False,
     ):
         db = SamplingDB.create_db(
             dbfilename,
@@ -86,18 +90,26 @@ class Sampling(Colt):
             model=model,
             sp=sp,
         )
-        config = db.get_config()
-        config["sampling_db"] = dbfilename
-        return cls(config, db, db.dynsampling, logger=logger)
+        # config = db.get_config()
+        sampling_config = cls.generate_user_input(sampling_config).check_only()
+        sampling_config.update({"sampling_db": dbfilename})
+        return cls(
+            sampling_config, db, db.dynsampling, logger=logger, sp=sp, fillit=fillit
+        )
 
     @classmethod
-    def from_db(cls, dbfilename, logger=None):
+    def from_db(cls, sampling_config, dbfilename, logger=None, sp=False, fillit=False):
         db = SamplingDB.from_db(dbfilename)
-        config = db.get_config()
-        config["sampling_db"] = dbfilename
-        return cls(config, db, db.dynsampling, logger=logger)
+        # config = db.get_config()
+        sampling_config = cls.generate_user_input(sampling_config).check_only()
+        sampling_config.update({"sampling_db": dbfilename})
+        return cls(
+            sampling_config, db, db.dynsampling, logger=logger, sp=sp, fillit=fillit
+        )
 
-    def __init__(self, config, db, dynsampling, sampler=None, logger=None):
+    def __init__(
+        self, config, db, dynsampling, sampler=None, logger=None, sp=False, fillit=False
+    ):
         """Sampling always goes with a database, if not needed use Sampler class"""
         self._db = db
         if logger is None:
@@ -106,22 +118,31 @@ class Sampling(Colt):
         else:
             self.logger = logger
 
-        self.sampler = sampler
+        if sampler is None:
+            self.logger.info(f"Loading sampler {config['method'].value}")
+            self.sampler = self._get_sampler(config["method"], start=self.nconditions)
+        else:
+            self.sampler = sampler
 
-        # check for conditions
-        if self.nconditions < config["n_conditions"]:
-            # setup sampler
-            if sampler is None:
-                logger.info(f"Loading sampler {config['method'].value}")
-                self.sampler = self._get_sampler(
-                    config["method"], start=self.nconditions
-                )
-            else:
-                self.sampler = sampler
-            self.logger.info(
-                f"Adding {config['n_conditions']-self.nconditions} additional entries to the database"
-            )
-            self.add_conditions(config["n_conditions"] - self.nconditions)
+        if "n_conditions_max" not in config:
+            n_conditions_max = config["n_conditions"]
+        else:
+            n_conditions_max = config["n_conditions_max"]
+
+        if sp is True:
+            n_conditions = self.sampler.get_number_of_conditions(1)
+            self.write_conditions(1)
+        else:
+            n_conditions = self.sampler.get_number_of_conditions(n_conditions_max)
+
+            # check for conditions
+            if fillit is True:
+                if self.nconditions < n_conditions:
+                    # setup sampler
+                    self.logger.info(
+                        f"Adding {n_conditions-self.nconditions} additional entries to the database"
+                    )
+                    self.add_conditions(n_conditions - self.nconditions)
 
     def add_conditions(self, nconditions, state=0):
         # TODO
@@ -133,6 +154,17 @@ class Sampling(Colt):
             if cond is None:
                 self.logger.error("Sampler has no more conditions")
             self._db.append_condition(cond)
+
+    def write_conditions(self, nconditions, state=0):
+        # TODO
+        # Take the random seed and random counter from the database to
+        # assure the consistency with all
+        # the previous conditions
+        for _ in range(nconditions):
+            cond = self.sampler.get_condition()
+            if cond is None:
+                self.logger.error("Sampler has no more conditions")
+            self._db.write_condition(cond, 0)
 
     def write_condition(self, condition, idx):
         self._db.write_condition(condition, idx)

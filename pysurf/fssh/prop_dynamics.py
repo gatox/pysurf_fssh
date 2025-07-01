@@ -26,7 +26,8 @@ class State(Colt):
     rev_vel_no_hop = true :: bool :: true, false
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup 
     method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
-    decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
+    decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC
+    save_properties = :: str, optional :: fosc, sts_mom
     [substeps(true)]
     n_substeps = 10 :: int
     [substeps(false)]
@@ -129,6 +130,19 @@ class State(Colt):
                 self.q_eff = (3 * self.natoms - 5) * self.t_target * (10 * self.dt) ** 2
         else:
             self.thermostat = False
+
+        if config["save_properties"] is not None:
+            self.save_properties = [config["save_properties"]]
+        else:
+            self.save_properties = []
+
+        self.additional = {}
+
+    def save_additional(self, db):
+        # either add fosc or sts_mom
+        print("we are saving: ", self.additional)
+        for prop, value in self.additional.items():
+            db.set(prop, value)
 
     @classmethod
     def from_config(cls, config):
