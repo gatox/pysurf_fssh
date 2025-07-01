@@ -1071,7 +1071,7 @@ class PrintResults:
                         "ekin",
                         "epot",
                         "etot",
-                        "fosc",
+                        "populations",
                         "currstate",
                     ],
                     dimensions={"nmodes": nmodes, "nstates": nstates},
@@ -1088,14 +1088,14 @@ class PrintResults:
                         "ekin",
                         "epot",
                         "etot",
-                        "fosc",
+                        "populations",
                         "currstate",
                     ],
                     dimensions={"natoms": natoms, "nstates": nstates},
                     model=model,
                 )
             db.set("currstate", state.instate)
-            db.set("fosc", self.norm_coeff(state.ncoeff))
+            db.set("populations", self.norm_coeff(state.ncoeff))
         elif state.method == "Surface_Hopping" and prob in ("lz", "lz_nacs"):
             if model:
                 db = PySurfDB.generate_database(
