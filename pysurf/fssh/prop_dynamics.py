@@ -88,7 +88,7 @@ class State(Colt):
         self.states = states
         self.ncoeff = ncoeff
         self.prob = prob
-        self.rescale_vel = config["rescale_vel"].value 
+        self.rescale_vel = config["rescale_vel"].value
         if config["rescale_vel"] == "momentum":
             self.reduced_kene = config["rescale_vel"]["number_vdf"]
         self.coupling = coupling
@@ -135,16 +135,14 @@ class State(Colt):
             self.save_properties = [config["save_properties"]]
         else:
             self.save_properties = []
-    
+
         self.additional = {}
-    
+
     def save_additional(self, db):
         # either add fosc or sts_mom
         print("we are saving: ", self.additional)
         for prop, value in self.additional.items():
             db.set(prop, value)
-
-
 
     @classmethod
     def from_config(cls, config):

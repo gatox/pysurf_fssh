@@ -6,7 +6,7 @@ from .dbtools import load_database as l_db
 
 
 class Database(object):
-    """ Core Database, can store data given by the DatabaseRepresentation
+    """Core Database, can store data given by the DatabaseRepresentation
 
     database is automatically build using a settings dictionary:
 
