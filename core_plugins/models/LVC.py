@@ -200,11 +200,9 @@ class LVC(Model):
         for prop in request:
             if prop == 'energy':
                 energy = self._energy(Q, adiabatic = adiabatic)
-                print("Edison_LVC_energy:",energy[request.states])
                 request.set('energy', energy[request.states])
             if prop == 'gradient':
                 grad = self._gradient(Q, adiabatic = adiabatic)
-                print("Edison_LVC_gradient:",grad[request.states,:])
                 request.set('gradient', grad[request.states,:])
             if prop == 'nacs':
                 #nacs_full = self._nacs(Q)
@@ -213,10 +211,8 @@ class LVC(Model):
                 #    for j in request.states:
                 #        if i != j:
                 #            nacs[(i,j)] = nacs_full[i,j]
-                #print("Edison_LVC_nacs:",nacs)
                 #request.set('nacs', nacs)
                 nacs = self._nacs(Q)
-                print("Edison_LVC_nacs:",nacs)
                 request.set("nacs", nacs)
             if prop == 'Hel':
                 request.set('Hel', self._diab_Hel(Q))
