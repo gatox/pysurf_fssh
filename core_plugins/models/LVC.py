@@ -150,19 +150,31 @@ class LVC(Model):
         Hel = self._diab_Hel(Q)
         V, C = np.linalg.eigh(Hel)
         # Nonadiabatic coupling
-        nac = np.zeros((self.nstates, self.nstates, self.nmodes))
+        #nac = np.zeros((self.nstates, self.nstates, self.nmodes))
+        #for i in range(self.nstates):
+        #    for j in range(self.nstates):
+        #        dummy = np.zeros(self.nmodes)
+        #        if i != j:
+        #            for k in range(self.nstates):
+        #                for l in range(self.nstates):
+        #                    dummy += C[k,i] * C[l,j] * gradient[k,l]
+        #            dummy = - dummy / (V[i] - V[j])
+        #        #
+        #        nac[i,j] = dummy.copy()
+        ##
+        #return nac
+        nacs_full = {}
         for i in range(self.nstates):
             for j in range(self.nstates):
                 dummy = np.zeros(self.nmodes)
                 if i != j:
+                    dummy = np.zeros(self.nmodes)
                     for k in range(self.nstates):
                         for l in range(self.nstates):
                             dummy += C[k,i] * C[l,j] * gradient[k,l]
                     dummy = - dummy / (V[i] - V[j])
-                #
-                nac[i,j] = dummy.copy()
-        #
-        return nac
+                    nacs_full[(i, j)] = dummy.copy()
+        return nacs_full
                                    
     # Get the requested properties
     def get(self, request):
@@ -188,18 +200,24 @@ class LVC(Model):
         for prop in request:
             if prop == 'energy':
                 energy = self._energy(Q, adiabatic = adiabatic)
+                print("Edison_LVC_energy:",energy[request.states])
                 request.set('energy', energy[request.states])
             if prop == 'gradient':
                 grad = self._gradient(Q, adiabatic = adiabatic)
+                print("Edison_LVC_gradient:",grad[request.states,:])
                 request.set('gradient', grad[request.states,:])
             if prop == 'nacs':
-                nacs_full = self._nacs(Q)
-                nacs = {}
-                for i in request.states:
-                    for j in request.states:
-                        if i != j:
-                            nacs[(i,j)] = nacs_full[i,j]
-                request.set('nacs', nacs)
+                #nacs_full = self._nacs(Q)
+                #nacs = {}
+                #for i in request.states:
+                #    for j in request.states:
+                #        if i != j:
+                #            nacs[(i,j)] = nacs_full[i,j]
+                #print("Edison_LVC_nacs:",nacs)
+                #request.set('nacs', nacs)
+                nacs = self._nacs(Q)
+                print("Edison_LVC_nacs:",nacs)
+                request.set("nacs", nacs)
             if prop == 'Hel':
                 request.set('Hel', self._diab_Hel(Q))
             if prop == 'Hel_gradient':
