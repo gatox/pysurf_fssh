@@ -24,13 +24,13 @@
 
 # \:rocket: Installation
 
-`pysurf_fssh` is a plugin for [PySurf](https://github.com/mfsjmenger/pysurf) that requires an external electronic structure package to compute the necessary electronic properties for dynamics (e.g., energies, gradients, nonadiabatic couplings). Supported backends include:
+`pysurf_fssh` is a plugin for [PySurf](https://github.com/mfsjmenger/pysurf) that requires an external electronic structure package to compute the necessary electronic properties for dynamics (e.g., energies, gradients, nonadiabatic couplings). The following quantum chemistry packages are supported:
 
 - Quantum chemistry software such as [Q-Chem](https://manual.q-chem.com/latest/), [OpenMolcas](https://gitlab.com/Molcas/OpenMolcas), and [BAGEL](https://nubakery.org/)
-- Quantum simulation backends like [SAOOVQE](https://github.com/qc2nl/SAOOVQE)
+- Quantum algoritms such as [SAOOVQE](https://github.com/qc2nl/SAOOVQE)
 - Model Hamiltonians such as an analytical LVC model (included as an example)
 
-The following installation guide shows how to set up `pysurf_fssh` in combination with `SAOOVQE`, as an example backend. The installation order (first SAOOVQE, then PySurf-FSSH) is important for compatibility in this specific case.
+The following installation guide shows how to set up `pysurf_fssh` in combination with `SAOOVQE`, as an example package. The installation order (first SAOOVQE, then PySurf-FSSH) is important for compatibility in this specific case.
 
 ### \:wrench: Example Setup: SAOOVQE + PySurf-FSSH
 
@@ -102,7 +102,7 @@ conda activate pysurf_saoovqe
     ```
 ---
 
-If you are using another backend (like **OpenMolcas** or **Q-Chem**), install that backend according to its documentation. You can then configure `pysurf_fssh` to work with it by adapting the interface accordingly.
+If you are using another package (like **OpenMolcas** or **Q-Chem**), install that package according to its documentation. You can then configure `pysurf_fssh` to work with it by adapting the interface accordingly.
 
 The flexibility of `pysurf_fssh` makes it easy to extend to additional electronic structure packages.
 
