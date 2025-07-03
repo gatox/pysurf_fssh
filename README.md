@@ -123,6 +123,19 @@ cat gen_results.out
 Located in: `examples/ch2nh_saoovqe/`
 
 > :warning: **Note:** This example requires access to the private [SAOOVQE](https://github.com/qc2nl/SAOOVQE) repository. Please make sure it is installed and working before attempting this example.
+> For proper compatibility when using **PySurf-FSSH** with **SAOOVQE**, we recommend using the following branches:
+>   - **PySurf-FSSH**: use the `master` branch (default and recommended)
+>   - **SAOOVQE**: use the `noise_old_saoovqe` branch (required)
+>
+>    To switch branches:
+>
+>    ```bash
+>    cd pysurf_fssh
+>    git checkout master
+>    
+>    cd ../SAOOVQE
+>    git checkout noise_old_saoovqe
+>    ```
 
 If you **do not** have access to SAOOVQE, you can still test `pysurf_fssh` functionality using the **Pyrazine LVC model** described above.
 
