@@ -31,7 +31,7 @@ Then install the SAOOVQE package (note that this must be done **before** setting
 
 Install dependencies for PySurf manually, as it does not support pip installation:
 
-    pip install pycolt qctools netcdf4 numpy matplotlib
+    pip install numpy pycolt qctools netcdf4 matplotlib
 
 ---
 
