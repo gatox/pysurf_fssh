@@ -55,13 +55,15 @@ conda activate pysurf_fssh
     ```bash
     git clone https://github.com/gatox/pysurf_fssh.git
     cd pysurf_fssh
+
+    # pysurf_fssh dependencies
     conda install -c conda-forge numpy scipy matplotlib h5py netcdf4
     pip install pycolt qctools jinja2
     ```
 
 3. **Set environment variables**
 
-    Add the following lines to your shell config file (`~/.bashrc`, `~/.zshrc`, etc.):
+    Add the following line to your shell config file (`~/.bashrc`, `~/.zshrc`, etc.):
 
     ```bash
     export PYTHONPATH=/full/path/to/pysurf_fssh:$PYTHONPATH
@@ -71,14 +73,15 @@ conda activate pysurf_fssh
 
 ---
 
-# \:sunrise: Examples
+# :sunrise: Examples
 
 The `examples/` folder includes ready-to-run demonstrations:
-
 
 ## 1. Pyrazine LVC Model
 
 Located in: `examples/pyrazine_lvc_model/`
+
+This model does not require any external quantum chemistry code and is included with `pysurf_fssh`. It provides a quick way to verify that your installation works and to test all the functionalities.
 
 Two folders:
 
@@ -88,8 +91,8 @@ Two folders:
 ### Input setup:
 
 - 10 trajectories generated with Wigner sampling (`sampling.inp`)
-- Time step: 20 a.u. (\~0.5 fs)
-- Total time: 417 steps (\~200 fs)
+- Time step: 20 a.u. (~0.5 fs)
+- Total time: 417 steps (~200 fs)
 - Settings in `spp.inp`, `prop.inp`
 
 ### How to run:
@@ -103,34 +106,63 @@ python /full/path/to/pysurf_fssh/bin/setup_propagation.py
 cd prop/traj_00000003
 python /full/path/to/pysurf_fssh/bin/run_trajectory.py
 ```
+
 Replace `/full/path/to/` with the actual absolute paths on your system.
-This model runs extremely fast. To inspect results:
+
+To inspect results:
 
 ```bash
 ncdump -v currstate results.db
 cat gen_results.out
 ```
 
-## 2. CH2NH + SAOOVQE (Ab Initio)
+---
+
+## 2. CH₂NH + SAOOVQE (Ab Initio)
 
 Located in: `examples/ch2nh_saoovqe/`
 
-Each subfolder (e.g., `ch2nh_t_noise_f_therm`) represents different combinations of noise and thermostat usage. Folder naming convention:
+> :warning: **Note:** This example requires access to the private [SAOOVQE](https://github.com/qc2nl/SAOOVQE) repository. Please make sure it is installed and working before attempting this example.
 
-- `t` = true (used)
-- `f` = false (not used)
+If you **do not** have access to SAOOVQE, you can still test `pysurf_fssh` functionality using the **Pyrazine LVC model** described above.
 
-For instance, `ch2nh_t_noise_f_therm` uses noise but no thermostat.
+### Setup Instructions
+
+1. **Install SAOOVQE** following its official instructions.
+2. Then install `pysurf_fssh` as described in the installation section.
+3. Enable the SAOOVQE interface by editing `core_plugins/plugins.ini`:
+
+```ini
+# To enable the SAOOVQE interface, make sure the following line is commented:
+# interfaces/saoovqe_i.py
+```
+> :warning: **Note:** Although it may seem counterintuitive, the SAOOVQE interface is enabled when this line is commented (i.e., prefixed with #).
+
+4. Add the following line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.):
+
+```bash
+export SAOOVQEDIR=/full/path/to/SAOOVQE
+```
+
+Replace `/full/path/to/SAOOVQE` with the actual path to your SAOOVQE installation.
+
+---
+
+Each subfolder (e.g., `ch2nh_t_noise_f_therm`) represents a different configuration:
+
+- `t` = true (enabled)
+- `f` = false (disabled)
+
+For example, `ch2nh_t_noise_f_therm` uses noise but no thermostat.
 
 ### Input setup:
 
-- 10 trajectories generated with Wigner sampling (`sampling.inp`)
-- Starting from the first excited state
-- Time step: 10 a.u. (\~0.25 fs)
-- Dynamics span 3 steps
-- Noise: mean = 0, variance = 1.0e-8
-- Electronic structure settings: `spp.inp`
-- Dynamics control: `prop.inp`
+- 10 trajectories using Wigner sampling (`sampling.inp`)
+- Initial state: first excited state
+- Time step: 10 a.u. (~0.25 fs)
+- Simulation length: 3 steps
+- Noise parameters: mean = 0, variance = 1.0e-8
+- Settings: `spp.inp`, `prop.inp`
 
 ### How to run:
 
@@ -139,14 +171,17 @@ cd ch2nh_t_noise_f_therm
 python /full/path/to/pysurf_fssh/bin/sampling.py
 python /full/path/to/pysurf_fssh/bin/setup_propagation.py
 
-# run the trajectory No.7
+# Run trajectory No. 7
 cd prop/traj_00000007
 python /full/path/to/pysurf_fssh/bin/run_trajectory.py
 ```
-Replace `/full/path/to/` with the actual absolute paths on your system.
-Results are saved in `results.db` and `gen_results.out`.
 
-> Note: To change the number of trajectories, make sure to edit `sampling.inp` **before** running `sampling.py`. This will generate a new set of initial conditions. Likewise, the `spp.inp` and `prop.inp` files can be modified **before** running `setup_propagation.py`. If you have already run this setup and want to apply changes to **all** trajectories, you must delete the existing `prop` folder, update the input files, and rerun `setup_propagation.py`. If you prefer to change only specific trajectories, you can modify the input files individually within each trajectory folder without deleting the entire `prop` directory.
+Results will be stored in `results.db` and `gen_results.out`.
+
+> :information_source: **Tip:** To change the number of trajectories or other parameters, update `sampling.inp`, `spp.inp`, or `prop.inp` **before** running the setup scripts.  
+To apply changes across all trajectories, delete the `prop/` folder and rerun `setup_propagation.py`.  
+To modify specific trajectories only, edit their individual folders directly.
+
 ---
 
 # \:card_index: Credits
