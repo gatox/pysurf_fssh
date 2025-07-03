@@ -83,7 +83,7 @@ Located in: `examples/pyrazine_lvc_model/`
 
 This model does not require any external quantum chemistry code and is included with `pysurf_fssh`. It provides a quick way to verify that your installation works and to test all the functionalities.
 
-Two folders:
+The `pyrazine_lvc_model` folder contains two subfolders:
 
 - `pyrazine_f_therm`: no thermostat
 - `pyrazine_t_therm`: thermostat enabled
@@ -98,7 +98,7 @@ Two folders:
 ### How to run:
 
 ```bash
-cd pyrazine_lvc_model
+cd pyrazine_f_therm
 python /full/path/to/pysurf_fssh/bin/sampling.py
 python /full/path/to/pysurf_fssh/bin/setup_propagation.py
 
@@ -161,7 +161,7 @@ Replace `/full/path/to/SAOOVQE` with the actual path to your SAOOVQE installatio
 
 ---
 
-Each subfolder (e.g., `ch2nh_t_noise_f_therm`) represents a different configuration:
+Each subfolder inside `ch2nh_saoovqe` (e.g., `ch2nh_t_noise_f_therm`) represents a different configuration:
 
 - `t` = true (enabled)
 - `f` = false (disabled)
