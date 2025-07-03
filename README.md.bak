@@ -30,15 +30,17 @@
 - Quantum algorithms such as [SAOOVQE](https://github.com/qc2nl/SAOOVQE)
 - Model Hamiltonians such as an analytical LVC model (included as an example)
 
-### \:wrench: Setup PySurf-FSSH
+The following installation guide shows how to set up `pysurf_fssh` in combination with `SAOOVQE`, as an example package. The installation order (first SAOOVQE, then PySurf-FSSH) is important for compatibility in this specific case.
 
-We recommend using a clean [Anaconda](https://www.anaconda.com/) environment. A pre-configured environment file is provided: `env_pysurf_fssh.yml`.
+### \:wrench: Example Setup: SAOOVQE + PySurf-FSSH
+
+We recommend using a clean [Anaconda](https://www.anaconda.com/) environment. A pre-configured environment file is provided: `env_pysurf_saoovqe.yml`.
 
 #### Quick Setup (YAML File)
 
 ```bash
-conda env create -f env_pysurf_fssh.yml
-conda activate pysurf_fssh
+conda env create -f env_pysurf_saoovqe.yml
+conda activate pysurf_saoovqe
 ```
 
 #### Manual Setup
@@ -46,28 +48,63 @@ conda activate pysurf_fssh
 1. **Create and activate a new environment**
 
     ```bash
-    conda create -y -n pysurf_fssh python=3.9
-    conda activate pysurf_fssh
+    conda create -y -n pysurf_saoovqe python=3.9
+    conda activate pysurf_saoovqe
     ```
 
-2. **Install PySurf-FSSH and its dependencies**
+2. **Install SAOOVQE and its dependencies**
+
+    ```bash
+    pip install numpy scipy numba openfermion cirq
+    conda install -c psi4 psi4
+
+    git clone https://github.com/qc2nl/SAOOVQE.git
+    cd SAOOVQE
+    pip install -e .
+    cd ..
+    ```
+
+3. **Install PySurf-FSSH and its dependencies**
 
     ```bash
     git clone https://github.com/gatox/pysurf_fssh.git
     cd pysurf_fssh
-    conda install -c conda-forge numpy scipy matplotlib h5py netcdf4
-    pip install pycolt qctools jinja2
+    pip install pycolt qctools netcdf4 numpy matplotlib
     ```
 
-3. **Set environment variables**
+4. **Set environment variables**
 
     Add the following lines to your shell config file (`~/.bashrc`, `~/.zshrc`, etc.):
 
     ```bash
     export PYTHONPATH=/full/path/to/pysurf_fssh:$PYTHONPATH
+    export SAOOVQEDIR=/full/path/to/SAOOVQE
     ```
 
     Replace `/full/path/to/` with the actual absolute paths on your system.
+
+5. **Recommended branches**
+
+    For proper compatibility when using **PySurf-FSSH** with **SAOOVQE**, we recommend using the following branches:
+
+    - **PySurf-FSSH**: use the `master` branch (default and recommended)  
+      > Note: The older `vdf_old_branch` is still compatible, but the included examples are tailored to features available in the `master` branch.
+    - **SAOOVQE**: use the `noise_old_saoovqe` branch (required)
+
+    To switch branches:
+
+    ```bash
+    cd pysurf_fssh
+    git checkout master
+    
+    cd ../SAOOVQE
+    git checkout noise_old_saoovqe
+    ```
+---
+
+If you are using another package (like **OpenMolcas** or **Q-Chem**), install that package according to its documentation. You can then configure `pysurf_fssh` to work with it by adapting the interface accordingly.
+
+The flexibility of `pysurf_fssh` makes it easy to extend to additional electronic structure packages.
 
 ---
 
@@ -75,43 +112,7 @@ conda activate pysurf_fssh
 
 The `examples/` folder includes ready-to-run demonstrations:
 
-
-## 1. Pyrazine LVC Model
-
-Located in: `examples/pyrazine_lvc_model/`
-
-Two folders:
-
-- `pyrazine_f_therm`: no thermostat
-- `pyrazine_t_therm`: thermostat enabled
-
-### Input setup:
-
-- 10 trajectories generated with Wigner sampling (`sampling.inp`)
-- Time step: 20 a.u. (\~0.5 fs)
-- Total time: 417 steps (\~200 fs)
-- Settings in `spp.inp`, `prop.inp`
-
-### How to run:
-
-```bash
-cd pyrazine_lvc_model
-python /full/path/to/pysurf_fssh/bin/sampling.py
-python /full/path/to/pysurf_fssh/bin/setup_propagation.py
-
-# run the trajectory No. 3
-cd prop/traj_00000003
-python /full/path/to/pysurf_fssh/bin/run_trajectory.py
-```
-Replace `/full/path/to/` with the actual absolute paths on your system.
-This model runs extremely fast. To inspect results:
-
-```bash
-ncdump -v currstate results.db
-cat gen_results.out
-```
-
-## 2. CH2NH + SAOOVQE (Ab Initio)
+## 1. CH2NH + SAOOVQE (Ab Initio)
 
 Located in: `examples/ch2nh_saoovqe/`
 
@@ -145,6 +146,41 @@ python /full/path/to/pysurf_fssh/bin/run_trajectory.py
 ```
 Replace `/full/path/to/` with the actual absolute paths on your system.
 Results are saved in `results.db` and `gen_results.out`.
+
+## 2. Pyrazine LVC Model
+
+Located in: `examples/pyrazine_lvc_model/`
+
+Two folders:
+
+- `pyrazine_f_therm`: no thermostat
+- `pyrazine_t_therm`: thermostat enabled
+
+### Input setup:
+
+- 10 trajectories generated with Wigner sampling (`sampling.inp`)
+- Time step: 20 a.u. (\~0.5 fs)
+- Total time: 417 steps (\~200 fs)
+- Settings in `spp.inp`, `prop.inp`
+
+### How to run:
+
+```bash
+cd pyrazine_lvc_model
+python /full/path/to/pysurf_fssh/bin/sampling.py
+python /full/path/to/pysurf_fssh/bin/setup_propagation.py
+
+# run the trajectory No. 3
+cd prop/traj_00000003
+python /full/path/to/pysurf_fssh/bin/run_trajectory.py
+```
+Replace `/full/path/to/` with the actual absolute paths on your system.
+This model runs extremely fast. To inspect results:
+
+```bash
+ncdump -v currstate results.db
+cat gen_results.out
+```
 
 > Note: To change the number of trajectories, make sure to edit `sampling.inp` **before** running `sampling.py`. This will generate a new set of initial conditions. Likewise, the `spp.inp` and `prop.inp` files can be modified **before** running `setup_propagation.py`. If you have already run this setup and want to apply changes to **all** trajectories, you must delete the existing `prop` folder, update the input files, and rerun `setup_propagation.py`. If you prefer to change only specific trajectories, you can modify the input files individually within each trajectory folder without deleting the entire `prop` directory.
 ---
