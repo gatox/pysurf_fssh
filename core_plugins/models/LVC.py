@@ -82,6 +82,7 @@ class LVC(Model):
         disp  = np.eye(self.nmodes)
         self.modes  = [Mode(w, disp[i]) for i, w in enumerate(self.freq)]
         self.masses = 1.0 / self.freq.copy()
+        self._last_crd = None
         
     #
     # Properties
@@ -149,20 +150,6 @@ class LVC(Model):
         #
         Hel = self._diab_Hel(Q)
         V, C = np.linalg.eigh(Hel)
-        # Nonadiabatic coupling
-        #nac = np.zeros((self.nstates, self.nstates, self.nmodes))
-        #for i in range(self.nstates):
-        #    for j in range(self.nstates):
-        #        dummy = np.zeros(self.nmodes)
-        #        if i != j:
-        #            for k in range(self.nstates):
-        #                for l in range(self.nstates):
-        #                    dummy += C[k,i] * C[l,j] * gradient[k,l]
-        #            dummy = - dummy / (V[i] - V[j])
-        #        #
-        #        nac[i,j] = dummy.copy()
-        ##
-        #return nac
         nacs_full = {}
         for i in range(self.nstates):
             for j in range(self.nstates):
@@ -175,7 +162,27 @@ class LVC(Model):
                     dummy = - dummy / (V[i] - V[j])
                     nacs_full[(i, j)] = dummy.copy()
         return nacs_full
-                                   
+
+    def _do_lvc_ene_grad_nacs(self,Q, adiabatic = True):
+        self.energies = self._energy(Q, adiabatic = adiabatic) 
+        self.gradient = self._gradient(Q, adiabatic = adiabatic)
+        self.nacs = self._nacs(Q) 
+
+    def _out_energy(self, request):
+        """Energies"""
+        out_ene = self.energies
+        request.set('energy', out_ene[request.states])
+
+    def _out_gradient(self, request):
+        """Gradient"""
+        out_grad = self.gradient
+        request.set('gradient', out_grad[request.states,:])
+
+    def _out_nacs(self, request):
+        """Nonadiabatic couplings"""
+        out_nacs = self.nacs
+        request.set('nacs', out_nacs)                          
+        
     # Get the requested properties
     def get(self, request):
         """
@@ -196,35 +203,18 @@ class LVC(Model):
         adiabatic = True
         if 'adiabatic' in request.keys():
             adiabatic = request['adiabatic']
-        #
-        for prop in request:
-            if prop == 'energy':
-                energy = self._energy(Q, adiabatic = adiabatic)
-                request.set('energy', energy[request.states])
-            if prop == 'gradient':
-                grad = self._gradient(Q, adiabatic = adiabatic)
-                request.set('gradient', grad[request.states,:])
-            if prop == 'nacs':
-                #nacs_full = self._nacs(Q)
-                #nacs = {}
-                #for i in request.states:
-                #    for j in request.states:
-                #        if i != j:
-                #            nacs[(i,j)] = nacs_full[i,j]
-                #request.set('nacs', nacs)
-                nacs = self._nacs(Q)
-                request.set("nacs", nacs)
-            if prop == 'Hel':
-                request.set('Hel', self._diab_Hel(Q))
-            if prop == 'Hel_gradient':
-                grad_full = self._diab_Hel_gradient(Q)
-                #grad = {}
-                #for i in request.states:
-                #    for j in request.states:
-                #        grad[(i,j)] = grad_full[i,j]
-                request.set('Hel_gradient', grad_full)
-                #request.set('Hel_gradient', grad)
-        #return None
+
+        # Check if coordinates are the same as last call
+        if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
+            self._do_lvc_ene_grad_nacs(request.crd, adiabatic = True)
+            self._last_crd = np.copy(request.crd)
+
+        if 'energy'  in request:
+            self._out_energy(request)
+        if 'gradient' in request:
+            self._out_gradient(request)
+        if 'nacs'  in request:
+            self._out_nacs(request)
         return request
     
     
