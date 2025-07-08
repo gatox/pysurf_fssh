@@ -35,9 +35,9 @@ class IntPynof(AbinitioBase):
     # implemented has to be overwritten by the individual classes for the methods
     implemented = ['energy', 'gradient']
 
-    def __init__(self, config, atomids, basis, chg, mult, ipnof, eri, gradients):
+    def __init__(self, config, atomids, nstates, basis, chg, mult, ipnof, eri, gradients):
         self.molecule = Molecule(atomids, None) 
-        self.natoms = len(atomids)
+        self.nstates = nstates
         self.basis = basis
         self.chg = chg
         self.mult = mult
@@ -50,8 +50,8 @@ class IntPynof(AbinitioBase):
         self._last_crd = None
 
     @classmethod
-    def from_config(cls, config, atomids):
-        return cls(config, atomids, config['basis'], config['chg'], config['mult'], config['ipnof'], config['eri'], config['gradients'])
+    def from_config(cls, config, atomids, natoms, nstates=None, **kwargs):
+        return cls(config, atomids, nstates, config['basis'], config['chg'], config['mult'], config['ipnof'], config['eri'], config['gradients'])
 
 
     def get(self, request):
@@ -84,10 +84,11 @@ class IntPynof(AbinitioBase):
         p = pynof.param(mol,self.basis)
         p.ipnof = self.ipnof
         p.RI = self.eri
-        if self.read_mos:
-            E,C,gamma,fmiug0,g = pynof.compute_energy(mol,p,C,gradients=self.gradients)
+        if self.read_mos and hasattr(self, "C"):
+            E,C,gamma,fmiug0,g = pynof.compute_energy(mol,p,self.C,gradients=self.gradients)
         else:
             E,C,gamma,fmiug0,g = pynof.compute_energy(mol,p,gradients=self.gradients)
+            self.C = C
         """Saving energy and gradient for the ground state"""
         self.energy = E
         self.grad = g.reshape(-1, 3)
@@ -99,8 +100,13 @@ class IntPynof(AbinitioBase):
 
     def _out_gradient(self, request):
         """Gradientof the ground state"""
-        out_grad = self.grad
-        request.set('gradient', out_grad)
+        out_gradient = {}
+        for state in request.states:
+            if state == 0:
+                out_gradient[state] = self.grad
+            else:
+                raise SystemExit("Gradients for excited states have not yet been implemented") 
+        request.set('gradient', out_gradient)
 
 if __name__=='__main__':
     from pysurf.database import PySurfDB
@@ -111,8 +117,9 @@ if __name__=='__main__':
     db = PySurfDB.load_database(db_file, read_only=True)
     crd = copy(db['crd'][0])
     atomids = copy(db['atomids'])
+    natoms = len(crd)
 
-    out = IntPynof.from_questions(config="spp.inp",atomids=atomids)
+    out = IntPynof.from_questions(config="spp.inp",atomids=atomids,natoms=natoms,nstates=None)
     
     # Create request for ground state (state 0)
     request = Request(crd, ['energy', 'gradient'], [0])
