@@ -142,8 +142,9 @@ class BornOppenheimer:
             self.natoms,
             config="spp.inp",
             atomids=state.atomids,
-            check_only=True,
+            #check_only=True,
         )
+        self.icall = 0
 
     @abstractmethod
     def get_gradient(self, crd, curr_state):
@@ -166,16 +167,19 @@ class BornOppenheimer:
     def setup(self, state):
         state.ene = self.get_energy(state.crd)
         grad = self.get_gradient(state.crd, state.instate)
-        state.epot = state.ene[state.instate]
+        state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
         return grad
 
     def new_surface(self, state, results, crd_new, t, dt):
         grad_new = self.get_gradient(crd_new, state.instate)
-        results.print_bh_var(t, dt, state)  # printing variables
+        if self.icall == 0:
+            self.ene_total_0  = state.ekin + state.epot
+            self.icall = 1
+        results.print_bh_var(t, dt, state, self.ene_total_0)  # printing variables
         results.save_db(t, state)  # save variables in database
         state.ene = self.get_energy(crd_new)
-        state.epot = state.ene[state.instate]
+        state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
         return grad_new
 
@@ -580,7 +584,7 @@ class SurfaceHopping(BornOppenheimer):
             self.spp = SurfacePointProvider.from_questions(
                 ["energy", "gradient", "wf_overlap"],
                 self.nstates,
-                self.natoms,
+                #self.natoms,
                 config="spp.inp",
                 atomids=state.atomids,
             )
@@ -1149,6 +1153,25 @@ class PrintResults:
     def dis_dimer(self, a, b):
         return sqrt(sum((a - b) ** 2))
 
+    def _read_spp_inf(self):
+        spp = open("spp.inp", 'r+')
+        for line in spp:
+            if "software = IntPynof" in line:
+                software_inf = "PyNof"
+            elif "ipnof =" in line:
+                ipnof_inf = str(line.split()[2])
+            elif "basis =" in line:
+                basis_inf = str(line.split()[2])
+        spp_inf = namedtuple(
+                "spp_inf",
+                "software_inf ipnof_inf basis_inf",
+        )
+        return spp_inf(
+            software_inf, 
+            ipnof_inf,
+            basis_inf,
+        )
+
     def print_acknowledgment(self, state):
         title = " Trajectory Surface Hopping Module "
         based = " This module uses the tools implemented in PySurf"
@@ -1165,9 +1188,10 @@ class PrintResults:
         nstates = state.nstates
         ncoeff = self.norm_coeff(state.ncoeff)
         decoherence = state.decoherence
+        thermostat = state.thermostat
         ack = namedtuple(
             "ack",
-            "title vel crd based actors prob coupling rescale_vel dt mdsteps instate nstates ncoeff decoherence",
+            "title vel crd based actors prob coupling rescale_vel dt mdsteps instate nstates ncoeff decoherence thermostat",
         )
         return ack(
             title,
@@ -1184,6 +1208,7 @@ class PrintResults:
             nstates,
             ncoeff,
             decoherence,
+            thermostat,
         )
 
     def print_head(self, state):
@@ -1223,44 +1248,40 @@ class PrintResults:
             )
             self.gen_results.write(self.dash + "\n")
         elif state.method == "Born_Oppenheimer":
-            self.t_crd_vel_ene_popu = open("t_crd_vel_ene_popu.csv", "w")
+            inf_BO = self._read_spp_inf()
+            #self.t_crd_vel_ene_popu = open("t_crd_vel_ene_popu.csv", "w")
             self.gen_results.write(f"\n{ack.title:=^{self.large_bo}}\n")
             self.gen_results.write(f"\n{ack.based:^{self.large_bo}}\n")
             self.gen_results.write(f"{ack.actors:^{self.large_bo}}\n")
-            self.gen_results.write(f"Initial parameters:\n")
-            self.gen_results.write(f"   Initial position:\n")
-            self.gen_results.write(
-                f"   {self.dis_dimer(ack.crd[0],ack.crd[1]):>0.4f}\n"
-            )
-            self.gen_results.write(f"   Initial velocity:\n")
-            self.gen_results.write(
-                f"   {self.dis_dimer(ack.vel[0],ack.vel[1]):>0.4f}\n"
-            )
-            self.gen_results.write(f"   Time step: {ack.dt}\n")
-            self.gen_results.write(f"   MD steps: {ack.mdsteps}\n")
-            self.gen_results.write(f"   Active state: {ack.instate}\n")
+            self.gen_results.write(f"Dynamic Information:\n")
+            self.gen_results.write(f"   Time step: {ack.dt} a.u.\n")
+            self.gen_results.write(f"   Nuclear propagator: Velocity Verlet Algo.\n")
+            self.gen_results.write(f"   Thermostat: {ack.thermostat}\n")
+            self.gen_results.write(f"Elect. Stru. Cal. Info.:\n")
+            self.gen_results.write(f"   Software: {inf_BO.software_inf} \n")
+            self.gen_results.write(f"   Functional: Piris {inf_BO.ipnof_inf} \n")
+            self.gen_results.write(f"   Basis: {inf_BO.basis_inf} \n")
             self.gen_results.write(f"Computing a Born Oppenheimer simulation:\n")
             self.gen_results.write(self.dash_bo + "\n")
-            head = namedtuple("head", "steps t dis dis_vel ekin epot etotal state")
+            head = namedtuple("head", "steps t ekin epot etotal diff_etotal state")
             head = head(
                 "MD_steps",
-                "Time",
-                "D_r1-r2",
-                "D_v1-v2",
-                "E_kinetic",
-                "E_potential",
-                "E_total",
+                "Time (a.u.)",
+                "E_kinetic (a.u.)",
+                "E_potential (a.u.)",
+                "E_total (a.u.)",
+                "Diff_E_total (a.u.)",
                 "State",
             )
             self.gen_results.write(
-                f"{head.steps:>10s} {head.t:>10s} {head.dis:>12s} {head.dis_vel:>12s}"
-                f"{head.ekin:>15s} {head.epot:>17s} {head.etotal:>13s} {head.state:>11s} \n"
+                f"{head.steps:>10s} {head.t:>10s} {head.ekin:>12s} {head.epot:>12s}"
+                f"{head.etotal:>15s} {head.diff_etotal:>17s} {head.state:>11s} \n"
             )
             self.gen_results.write(self.dash_bo + "\n")
-            self.t_crd_vel_ene_popu.write(
-                f"{head.t},{head.dis},{head.dis_vel},{head.ekin},"
-                f"{head.epot},{head.etotal},{head.state}\n"
-            )
+            #self.t_crd_vel_ene_popu.write(
+            #    f"{head.t},{head.dis},{head.dis_vel},{head.ekin},"
+            #    f"{head.epot},{head.etotal},{head.state}\n"
+            #)
         self.gen_results.flush()
 
     def print_var(self, t, dt, sur_hop, state):
@@ -1299,26 +1320,26 @@ class PrintResults:
             self.instate = var.state
         self.gen_results.flush()
 
-    def print_bh_var(self, t, dt, state):
-        var = namedtuple("var", "steps t dis dis_vel ekin epot etotal state")
+    def print_bh_var(self, t, dt, state, etotal_0):
+        #var = namedtuple("var", "steps t dis dis_vel ekin epot etotal state")
+        var = namedtuple("var", "steps t ekin epot etotal diff_etotal state")
         var = var(
             int(t / dt),
             t,
-            self.dis_dimer(state.crd[0], state.crd[1]),
-            self.dis_dimer(state.vel[0], state.vel[1]),
             state.ekin,
             state.epot,
             state.ekin + state.epot,
+            etotal_0-(state.ekin + state.epot),
             state.instate,
         )
         self.gen_results.write(
-            f"{var.steps:>8.0f} {var.t:>12.2f} {var.dis:>12.4f} {var.dis_vel:>12.4f}"
-            f"{var.ekin:>15.3f} {var.epot:>17.4f} {var.etotal:>13.4f} {var.state:>11.0f}\n"
+            f"{var.steps:>8.0f} {var.t:>12.2f} {var.ekin:>12.4f} {var.epot:>12.4f}"
+            f"{var.etotal:>15.3f} {var.diff_etotal:>17.4f} {var.state:>11.0f}\n"
         )
-        self.t_crd_vel_ene_popu.write(
-            f"{var.t:>0.3f},{var.dis:>0.8f},{var.dis_vel:>0.8f},"
-            f"{var.ekin:>0.8f},{var.epot:>0.8f},{var.etotal:>0.8f},{var.state:>0.0f}\n"
-        )
+        #self.t_crd_vel_ene_popu.write(
+        #    f"{var.t:>0.3f},{var.dis:>0.8f},{var.dis_vel:>0.8f},"
+        #    f"{var.ekin:>0.8f},{var.epot:>0.8f},{var.etotal:>0.8f},{var.state:>0.0f}\n"
+        #)
         self.gen_results.flush()
 
     def print_bottom(self, state):
@@ -1337,10 +1358,11 @@ class PrintResults:
             else:
                 self.gen_results.write(f"No hoppings achieved\n")
         elif state.method == "Born_Oppenheimer":
-            self.t_crd_vel_ene_popu.close()
+            #self.t_crd_vel_ene_popu.close()
             self.gen_results.write(self.dash_bo + "\n")
             self.gen_results.write(
-                f"Some important variables are printed in t_crd_vel_ene_popu.csv and results.db\n"
+                #f"Some important variables are printed in t_crd_vel_ene_popu.csv and results.db\n"
+                f"Some important variables are printed in results.db\n"
             )
         time_seg = time() - self.tra_time
         day = time_seg // (24 * 3600)
