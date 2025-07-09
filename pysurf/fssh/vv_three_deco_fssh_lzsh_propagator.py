@@ -1255,27 +1255,31 @@ class PrintResults:
             self.gen_results.write(f"{ack.actors:^{self.large_bo}}\n")
             self.gen_results.write(f"Dynamic Information:\n")
             self.gen_results.write(f"   Time step: {ack.dt} a.u.\n")
+            self.gen_results.write(f"   MD steps: {int(ack.mdsteps + 1)}\n")
             self.gen_results.write(f"   Nuclear propagator: Velocity Verlet Algo.\n")
             self.gen_results.write(f"   Thermostat: {ack.thermostat}\n")
             self.gen_results.write(f"Elect. Stru. Cal. Info.:\n")
             self.gen_results.write(f"   Software: {inf_BO.software_inf} \n")
-            self.gen_results.write(f"   Functional: Piris {inf_BO.ipnof_inf} \n")
+            if inf_BO.software_inf == "PyNof":
+                self.gen_results.write(f"   Functional: Piris {inf_BO.ipnof_inf} \n")
+            else:
+                self.gen_results.write(f"   Functional: N/A \n")
             self.gen_results.write(f"   Basis: {inf_BO.basis_inf} \n")
             self.gen_results.write(f"Computing a Born Oppenheimer simulation:\n")
             self.gen_results.write(self.dash_bo + "\n")
             head = namedtuple("head", "steps t ekin epot etotal diff_etotal state")
             head = head(
-                "MD_steps",
-                "Time (a.u.)",
-                "E_kinetic (a.u.)",
-                "E_potential (a.u.)",
-                "E_total (a.u.)",
-                "Diff_E_total (a.u.)",
+                "MD_steps |",
+                "Time (a.u.) |",
+                "E_kinetic (a.u.) |",
+                "E_potential (a.u.) |",
+                "E_total (a.u.) |",
+                "D_E_total (a.u.) |",
                 "State",
             )
             self.gen_results.write(
-                f"{head.steps:>10s} {head.t:>10s} {head.ekin:>12s} {head.epot:>12s}"
-                f"{head.etotal:>15s} {head.diff_etotal:>17s} {head.state:>11s} \n"
+                f"{head.steps:>11s} {head.t:>10s} {head.ekin:>12s} {head.epot:>12s}"
+                f"{head.etotal:>17s} {head.diff_etotal:>17s} {head.state:>4s} \n"
             )
             self.gen_results.write(self.dash_bo + "\n")
             #self.t_crd_vel_ene_popu.write(
@@ -1333,8 +1337,8 @@ class PrintResults:
             state.instate,
         )
         self.gen_results.write(
-            f"{var.steps:>8.0f} {var.t:>12.2f} {var.ekin:>12.4f} {var.epot:>12.4f}"
-            f"{var.etotal:>15.3f} {var.diff_etotal:>17.4f} {var.state:>11.0f}\n"
+            f"{var.steps:>8.0f} {var.t:>12.2f} {var.ekin:>17.4f} {var.epot:>19.4f}"
+            f"{var.etotal:>19.3f} {var.diff_etotal:>16.4f} {var.state:>10.0f}\n"
         )
         #self.t_crd_vel_ene_popu.write(
         #    f"{var.t:>0.3f},{var.dis:>0.8f},{var.dis_vel:>0.8f},"
