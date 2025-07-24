@@ -15,11 +15,11 @@ class State(Colt):
     dt = 1.0 :: float
     mdsteps = 40000 :: float
     #--------------------------------------------------------------------------
-    # Substeps: true or false
+    # Substeps: True or False
     # Nore: This feature is only available for Surface_Hopping. 
     #       For other methods, press Enter to continue.
     #--------------------------------------------------------------------------
-    substeps = :: bool, optional :: true, false 
+    substeps = :: str, optional :: True, False 
     #--------------------------------------------------------------------------
     # Rescale velocity: momentum or nacs
     # Note: This feature is only available for Surface_Hopping. 
@@ -40,6 +40,10 @@ class State(Colt):
     #--------------------------------------------------------------------------
     save_properties = :: str, optional :: fosc, sts_mom
     #==========================================================================
+    #                            Nose-Hoover thermostat
+    #==========================================================================
+    thermostat = :: str :: True, False
+    #==========================================================================
     #                             Nuclear Propagator
     #==========================================================================
     method = Born_Oppenheimer :: str :: Born_Oppenheimer, Surface_Hopping 
@@ -58,20 +62,16 @@ class State(Colt):
     prob = tully :: str :: tully, lz, lz_nacs    
     coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup 
     decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC
-    rev_vel_no_hop = true :: bool :: true, false
-    [substeps(true)]
+    rev_vel_no_hop = True :: bool :: True, False
+    [substeps(True)]
     n_substeps = 10 :: int
-    [substeps(false)]
-    n_substeps = false :: bool
+    [substeps(False)]
+    n_substeps = False :: bool
     [rescale_vel(momentum)]
-    number_vdf = false :: str :: false, nonlinear, linear
+    number_vdf = False :: str :: False, nonlinear, linear
     [rescale_vel(nacs)]
-    res_nacs = true :: bool
-    #==========================================================================
-    #                            Nose-Hoover thermostat
-    #==========================================================================
-    thermostat = :: bool :: true, false
-    [thermostat(true)]
+    res_nacs = True :: bool
+    [thermostat(True)]
     #--------------------------------------------------------------------------
     # Friction coefficient
     #--------------------------------------------------------------------------
@@ -84,8 +84,8 @@ class State(Colt):
     # degrees of freedom 
     #--------------------------------------------------------------------------
     dof = nonlinear :: str :: nonlinear, linear
-    [thermostat(false)]
-    therm = false :: bool
+    [thermostat(False)]
+    therm = False :: bool
     #==========================================================================
     """
 
@@ -144,7 +144,7 @@ class State(Colt):
                     )
             self.rev_vel_no_hop = config["method"]["rev_vel_no_hop"]
             self.decoherence = config["method"]["decoherence"]
-            if config["substeps"] == "true":
+            if config["substeps"] == "True":
                 self.substeps = True
                 self.n_substeps = config["substeps"]["n_substeps"]
             else:
@@ -166,7 +166,7 @@ class State(Colt):
             self.natoms = 1
         elif isinstance(self.mass, np.ndarray) != True:
             self.natoms = np.array([self.mass])
-        if config["thermostat"] == "true":
+        if config["thermostat"] == "True":
             self.thermostat = True
             self.xi = config["thermostat"]["xi"]
             self.dof = config["thermostat"]["dof"]
