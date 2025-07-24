@@ -134,7 +134,7 @@ class BornOppenheimer:
     needed_properties = ["energy", "gradient"]
 
     def __init__(self, state):
-        self.nstates = state.nstates
+        self.nstates = state.instate # Pynof works only for G.S. Originaly: state.nstates
         self.natoms = state.natoms
         self.spp = SurfacePointProvider.from_questions(
             ["energy", "gradient"],
@@ -809,26 +809,58 @@ class SurfaceHopping(BornOppenheimer):
 class State(Colt):
 
     _user_input = """ 
-    # chosen parameters
+    #==========================================================================
+    #               Parameters for Initialising Nuclear Propagation
+    #==========================================================================
     db_file = :: existing_file 
     t = 0.0 :: float
     dt = 1.0 :: float
     mdsteps = 40000 :: float
-    substeps = :: str 
-    # Nose-Hoover thermostat
-    thermostat = :: str
+    #--------------------------------------------------------------------------
+    # Substeps: true or false
+    # Note: This feature is only available for Surface_Hopping. 
+    #       For other methods, press Enter to continue.
+    #--------------------------------------------------------------------------
+    substeps = :: bool, optional :: true, false 
+    #--------------------------------------------------------------------------
+    # Rescale velocity: momentum or nacs
+    # Note: This feature is only available for Surface_Hopping. 
+    #       If 'momentum' is selected, the rescaling 
+    #       could be improved by enabling 'number_vdf'.
+    #       For other methods, press Enter to continue.
+    #--------------------------------------------------------------------------
+    rescale_vel = :: str, optional :: momentum, nacs 
+    #--------------------------------------------------------------------------
     # instate is the initial state: 0 = G.S, 1 = E_1, ...
-    instate = 1 :: int
+    #--------------------------------------------------------------------------
+    instate = 0 :: int
+    #--------------------------------------------------------------------------
+    # Save additional properties: 
+    # Oscillation string (fosc) and state-to-state transition moments (sts_mom)
+    # Note: These properties are available in Q-Chem.
+    #       Press Enter to skip this step.
+    #--------------------------------------------------------------------------
+    save_properties = :: str, optional :: fosc, sts_mom
+    #==========================================================================
+    #                             Nuclear Propagator
+    #==========================================================================
+    method = Born_Oppenheimer :: str :: Born_Oppenheimer, Surface_Hopping 
+    [method(Born_Oppenheimer)]
+    #==========================================================================
+    #                         Ab_inito Molecular Dynamics
+    #==========================================================================
+    activate_BO = 0 :: int 
+    [method(Surface_Hopping)]
+    #==========================================================================
+    #                       Nonadiabatic Molecular Dynamics 
+    #==========================================================================
     nstates = 2 :: int
     states = 0 1 :: ilist
     ncoeff = 0.0 1.0 :: flist
-    # diagonal probability is not working yet
-    prob = tully :: str :: tully, lz, lz_nacs     
-    rescale_vel = :: str 
+    prob = tully :: str :: tully, lz, lz_nacs    
+    coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup 
+    decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC
     rev_vel_no_hop = true :: bool :: true, false
-    coupling = nacs :: str :: nacs, wf_overlap, non_coup, semi_coup
-    method = Surface_Hopping :: str :: Surface_Hopping, Born_Oppenheimer  
-    decoherence = EDC :: str :: EDC, IDC_A, IDC_S, No_DC 
     [substeps(true)]
     n_substeps = 10 :: int
     [substeps(false)]
@@ -837,15 +869,26 @@ class State(Colt):
     number_vdf = false :: str :: false, nonlinear, linear
     [rescale_vel(nacs)]
     res_nacs = true :: bool
+    #==========================================================================
+    #                            Nose-Hoover thermostat
+    #==========================================================================
+    thermostat = :: bool :: true, false
     [thermostat(true)]
-    # friction coefficient
+    #--------------------------------------------------------------------------
+    # Friction coefficient
+    #--------------------------------------------------------------------------
     xi = 0.0 :: float
-    # target tempertaure in Kelvin
+    #--------------------------------------------------------------------------
+    # Target tempertaure in Kelvin
+    #--------------------------------------------------------------------------
     T = 300 :: float    
+    #--------------------------------------------------------------------------
     # degrees of freedom 
+    #--------------------------------------------------------------------------
     dof = nonlinear :: str :: nonlinear, linear
     [thermostat(false)]
     therm = false :: bool
+    #==========================================================================
     """
 
     def __init__(
@@ -854,11 +897,13 @@ class State(Colt):
         crd,
         vel,
         mass,
+        atomids,
         model,
         t,
         dt,
         mdsteps,
         instate,
+        method,
         nstates,
         states,
         ncoeff,
@@ -866,9 +911,7 @@ class State(Colt):
         rescale_vel,
         rev_vel_no_hop,
         coupling,
-        method,
         decoherence,
-        atomids,
         substeps,
         thermostat,
     ):
@@ -885,27 +928,32 @@ class State(Colt):
         self.dt = dt
         self.mdsteps = mdsteps
         self.instate = instate
-        self.nstates = nstates
-        self.states = states
-        self.ncoeff = ncoeff
-        self.prob = prob
-        self.rescale_vel = config["rescale_vel"].value
-        if config["rescale_vel"] == "momentum":
-            self.reduced_kene = config["rescale_vel"]["number_vdf"]
-        self.coupling = coupling
-        if config["rescale_vel"] == "nacs":
-            if self.coupling in ("wf_overlap, non_coup"):
-                raise SystemExit(
-                    "Wrong coupling method or wrong rescaling velocity approach"
-                )
-        self.rev_vel_no_hop = rev_vel_no_hop
         self.method = method
-        self.decoherence = decoherence
-        if config["substeps"] == "true":
-            self.substeps = True
-            self.n_substeps = config["substeps"]["n_substeps"]
-        else:
-            self.substeps = False
+        if config["method"] == "Surface_Hopping":
+            self.method = "Surface_Hopping"
+            self.nstates = config["method"]["nstates"]
+            self.states = config["method"]["states"]
+            self.ncoeff = config["method"]["ncoeff"]
+            self.prob = config["method"]["prob"]
+            self.rescale_vel = config["rescale_vel"].value
+            if config["rescale_vel"] == "momentum":
+                self.reduced_kene = config["rescale_vel"]["number_vdf"]
+            self.coupling = config["method"]["coupling"]
+            if config["rescale_vel"] == "nacs":
+                if self.coupling in ("wf_overlap", "non_coup"):
+                    raise SystemExit(
+                        "Incompatible coupling and rescaling"
+                    )
+            self.rev_vel_no_hop = config["method"]["rev_vel_no_hop"]
+            self.decoherence = config["method"]["decoherence"]
+            if config["substeps"] == "true":
+                self.substeps = True
+                self.n_substeps = config["substeps"]["n_substeps"]
+            else:
+                self.substeps = False
+        elif config["method"] == "Born_Oppenheimer":
+            self.method = "Born_Oppenheimer"
+            self.activate_BO = config["Born_Oppenheimer"]["activate_BO"]
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
@@ -916,10 +964,10 @@ class State(Colt):
         self.vk = []
         self.u = []
         self.rho = []
-        if isscalar(self.mass):
+        if np.isscalar(self.mass):
             self.natoms = 1
-        elif isinstance(self.mass, ndarray) != True:
-            self.natoms = array([self.mass])
+        elif isinstance(self.mass, np.ndarray) != True:
+            self.natoms = np.array([self.mass])
         if config["thermostat"] == "true":
             self.thermostat = True
             self.xi = config["thermostat"]["xi"]
@@ -932,6 +980,19 @@ class State(Colt):
         else:
             self.thermostat = False
 
+        if config["save_properties"] is not None:
+            self.save_properties = [config["save_properties"]]
+        else:
+            self.save_properties = []
+
+        self.additional = {}
+
+    def save_additional(self, db):
+        # either add fosc or sts_mom
+        print("we are saving: ", self.additional)
+        for prop, value in self.additional.items():
+            db.set(prop, value)
+
     @classmethod
     def from_config(cls, config):
         crd, vel, mass, atomids, model = cls.read_db(config["db_file"])
@@ -939,27 +1000,29 @@ class State(Colt):
         dt = config["dt"]
         mdsteps = config["mdsteps"]
         instate = config["instate"]
-        nstates = config["nstates"]
-        states = config["states"]
-        ncoeff = config["ncoeff"]
-        prob = config["prob"]
-        rescale_vel = config["rescale_vel"]
-        rev_vel_no_hop = config["rev_vel_no_hop"]
-        coupling = config["coupling"]
         method = config["method"]
-        decoherence = config["decoherence"]
-        substeps = config["substeps"]
-        thermostat = config["thermostat"]
+        nstates = config.get("nstates",None)
+        states = config.get("states",None)
+        ncoeff = config.get("ncoeff",None)
+        prob = config.get("prob",None)
+        rescale_vel = config.get("rescale_vel",None)
+        rev_vel_no_hop = config.get("rev_vel_no_hop",None)
+        coupling = config.get("coupling",None)
+        decoherence = config.get("decoherence",None)
+        substeps = config.get("substeps",None)
+        thermostat = config.get("thermostat",None)
         return cls(
             config,
             crd,
             vel,
             mass,
+            atomids,
             model,
             t,
             dt,
             mdsteps,
             instate,
+            method,
             nstates,
             states,
             ncoeff,
@@ -967,9 +1030,7 @@ class State(Colt):
             rescale_vel,
             rev_vel_no_hop,
             coupling,
-            method,
             decoherence,
-            atomids,
             substeps,
             thermostat,
         )
@@ -995,11 +1056,13 @@ class State(Colt):
         crd,
         vel,
         mass,
+        atomids,
         model,
         t,
         dt,
         mdsteps,
         instate,
+        method,
         nstates,
         states,
         ncoeff,
@@ -1007,9 +1070,7 @@ class State(Colt):
         rescale_vel,
         rev_vel_no_hop,
         coupling,
-        method,
         decoherence,
-        atomids,
         substeps,
         thermostat,
     ):
@@ -1018,11 +1079,13 @@ class State(Colt):
             crd,
             vel,
             mass,
+            atomids,
             model,
             t,
             dt,
             mdsteps,
             instate,
+            method,
             nstates,
             states,
             ncoeff,
@@ -1030,9 +1093,7 @@ class State(Colt):
             rescale_vel,
             rev_vel_no_hop,
             coupling,
-            method,
             decoherence,
-            atomids,
             substeps,
             thermostat,
         )
@@ -1055,10 +1116,10 @@ class PrintResults:
         return diag(outer(ncoeff, ncoeff.conj()).real)
 
     def save_db(self, t, state):
-        nstates = state.nstates
+        nstates = state.nstates if state.method == "Surface_Hopping" else len([state.instate])
         model = state.model
         nmodes = len(state.mass)
-        prob = state.prob
+        prob = state.prob if state.method == "Surface_Hopping" else None
         if isscalar(state.crd):
             natoms = 1
         else:
@@ -1173,21 +1234,21 @@ class PrintResults:
         )
 
     def print_acknowledgment(self, state):
-        title = " Trajectory Surface Hopping Module "
+        title = " Trajectory Surface Hopping Module " if state.method == "Surface_Hopping" else " Ab_inito Molecular Dynamics Module "
         based = " This module uses the tools implemented in PySurf"
         contributors = " Module implemented by: Edison Salazar, Maximilian Menger, and Shirin Faraji "
-        vel = state.vel
+        vel = state.vel 
         crd = state.crd
-        prob = state.prob
-        coupling = state.coupling
-        rescale_vel = state.rescale_vel
+        prob = state.prob if state.method == "Surface_Hopping" else None
+        coupling = state.coupling if state.method == "Surface_Hopping" else None
+        rescale_vel = state.rescale_vel if state.method == "Surface_Hopping" else None
         dt = state.dt
         mdsteps = state.mdsteps
         instate = state.instate
         self.instate = instate
-        nstates = state.nstates
-        ncoeff = self.norm_coeff(state.ncoeff)
-        decoherence = state.decoherence
+        nstates = state.nstates if state.method == "Surface_Hopping" else None
+        ncoeff = self.norm_coeff(state.ncoeff) if state.method == "Surface_Hopping" else None
+        decoherence = state.decoherence if state.method == "Surface_Hopping" else None
         thermostat = state.thermostat
         ack = namedtuple(
             "ack",
