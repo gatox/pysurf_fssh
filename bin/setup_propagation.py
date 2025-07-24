@@ -17,25 +17,33 @@ class SetupPropagation(SetupBase):
     subfolder = 'traj'
 
     _user_input = """
-    # Number of trajectories for the propagation
-    n_traj = -1 :: int
-
-    # sampling input
+    #==========================================================================
+    #                              Propagation Setup 
+    #==========================================================================
+    #--------------------------------------------------------------------------
+    # Sampling input
+    #--------------------------------------------------------------------------
     sampling_input = sampling.inp :: existing_file
-
+    #--------------------------------------------------------------------------
     # Database containing all the initial conditions
+    #--------------------------------------------------------------------------
     sampling_db = sampling.db :: existing_file
-
+    #--------------------------------------------------------------------------
     # Filepath for the inputfile of the Surface Point Provider
+    #--------------------------------------------------------------------------
     spp = spp.inp :: file
-    
-    # initial excited state for the trajectory
+    #--------------------------------------------------------------------------
+    # Initial excited state for the trajectory
+    #--------------------------------------------------------------------------
     initial state =  :: int
-
+    #--------------------------------------------------------------------------
     # Filepath for the inputfile of the Propagation
+    #--------------------------------------------------------------------------
     prop = prop.inp :: file
-
-    # Decide whether database for the propagation should be copied to the trajectory folder
+    #--------------------------------------------------------------------------
+    # Decide whether database for the propagation should be copied to the 
+    # trajectory folder
+    #--------------------------------------------------------------------------
     copy_db = none :: str
 
     ## Run LZ or FSSH 
@@ -78,10 +86,13 @@ class SetupPropagation(SetupBase):
         #    RunTrajectory.generate_input(config['prop'], config=lconfig)
         #
         State.from_questions(config = "prop.inp") 
-        if config['n_traj'] == -1:
+        ntraj = config.get('n_traj', -1)
+        if ntraj == -1:
             ntraj = len(sampling._db)
-        else:
-            ntraj = config['n_traj']
+        #if config['n_traj'] == -1:
+        #    ntraj = len(sampling._db)
+        #else:
+        #    ntraj = config['n_traj']
         if sampling.nconditions < ntraj:
             logger.error(f"Too few initial conditions in {config['sampling_db']}")
 

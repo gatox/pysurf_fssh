@@ -382,7 +382,7 @@ class OpenMolcas(AbinitioBase):
     }
 
     xms_caspt2_settings = {
-        "xMult": all,
+        "xMult": "all",
         "imag": 0.20,
         "ipea": 0.00,
         "convergence": 1.0e-07,
