@@ -2,27 +2,29 @@ db_file = sampling.db
 t = 0.0
 dt = 20
 mdsteps = 417
-substeps = false
-thermostat = true
-instate = 1
-nstates = 2
-states = 0 1
-ncoeff = 0.0 1.0
-prob = tully
+substeps = False
 rescale_vel = nacs
-rev_vel_no_hop = true
-coupling = nacs
-method = Surface_Hopping
-decoherence = EDC
+instate = 1
 save_properties = 
+thermostat = True
+method = Surface_Hopping
 
-[substeps(false)]
-n_substeps = false
+[substeps(False)]
+n_substeps = False
 
-[thermostat(true)]
+[rescale_vel(nacs)]
+res_nacs = True
+
+[thermostat(True)]
 xi = 0.0
 T = 300
 dof = nonlinear
 
-[rescale_vel(nacs)]
-res_nacs = true
+[method(Surface_Hopping)]
+nstates = 2
+states = 0 1
+ncoeff = 0.0 1.0
+prob = tully
+coupling = nacs
+decoherence = EDC
+rev_vel_no_hop = True
