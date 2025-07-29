@@ -38,7 +38,7 @@ class SubmitTrajectories:
             subfolder = os.path.join("prop",traj)
             try:
                 if method == "Born_Oppenheimer":
-                    run(['sbatch pysurf_pynof_run.sh'], cwd=subfolder, check=True, shell=True)
+                    run(['sbatch pysurf_pynof_dynamics.sh'], cwd=subfolder, check=True, shell=True)
                 elif method == "LandauZener":
                     if use_db == "yes":
                         run(['sbatch db_lz_run.sh'], cwd=subfolder, check=True, shell=True)
