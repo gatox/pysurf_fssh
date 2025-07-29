@@ -425,6 +425,7 @@ class OpenMolcas(AbinitioBase):
         self.f_osc = config["f_osc"]
         self.basis = basis
         self.icall = 0
+        self._last_crd = None
 
     def _update_settings(self, config):
         self.settings = {key: config[key] for key in self.settings}
@@ -459,6 +460,14 @@ class OpenMolcas(AbinitioBase):
             self.rasscf_settings.update({"file": "omolcas.RasOrb"})
         # update coordinates
         self.molecule.crd = request.crd
+
+        # Check if coordinates are the same as last call
+        if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
+            for state in request.states: 
+                self.outputs = self._do_sa_casscf_ene_grad_nacs(state)
+            self._last_crd = np.copy(request.crd)
+
+        # Output requested properties
         if "gradient" in request:
             self._out_gradient(request)
         if "energy" in request:
