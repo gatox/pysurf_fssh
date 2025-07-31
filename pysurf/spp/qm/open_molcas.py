@@ -11,8 +11,8 @@ from qctools import generate_filereader, Event
 from qctools.events import join_events
 
 #
-from . import AbinitioBase
-from ...system import Molecule
+from pysurf.spp.qm import AbinitioBase
+from pysurf.system import Molecule
 
 #
 from scipy.special import comb
@@ -40,6 +40,12 @@ def length_osc(kwargs):
     nstates = kwargs["nstates"]
     return int(comb(nstates, 2))
 
+def get_caspt2_energy(scftxt):
+    ene = []
+    for line in scftxt:
+        struct = line.split()[-1]
+        ene.append(float(struct))
+    return ene
 
 def get_xms_energies(scftxt):
     ene = []
@@ -80,6 +86,16 @@ def get_fosc(scftxt):
         ene.append(float(struct[1]))
     return ene
 
+CASPT2_Energy_OpMol = Event(
+    "CASPT2_Energy",
+    "xgrep",
+    {
+        "keyword": "FINAL CASPT2 RESULT:",
+        "ilen": length_ene,
+        "ishift": 6,
+    },
+    func=get_caspt2_energy,
+)
 
 XMS_Energies_OpMol = Event(
     "XMS_Energies",
@@ -143,6 +159,7 @@ OpenMolcasReader = generate_filereader("OpenMolcasReader", openmolcas)
 OpenMolcasReader.add_event("Gradient_OpMol", Gradient_OpMol)
 OpenMolcasReader.add_event("NACs_Index_OpMol", NACs_Index_OpMol)
 OpenMolcasReader.add_event("NACs_OpMol", NACs_OpMol)
+OpenMolcasReader.add_event("CASPT2_Energy_OpMol", CASPT2_Energy_OpMol)
 OpenMolcasReader.add_event("XMS_Energies_OpMol", XMS_Energies_OpMol)
 OpenMolcasReader.add_event("Fosc_OpMol", Fosc_OpMol)
 
@@ -157,6 +174,7 @@ COORD
  {{mol.format(atomid, crd)}} {% endfor %}
  {% for key, value in remsection %}
  {{key}} = {{value}} {% endfor %}
+ ricd
 
 >> Do while
 &SEWARD
@@ -466,6 +484,8 @@ class OpenMolcas(AbinitioBase):
             for state in request.states: 
                 self.outputs = self._do_sa_casscf_ene_grad_nacs(state)
             self._last_crd = np.copy(request.crd)
+        print("crd:",request.crd)
+        print("last_crd:",self._last_crd)
 
         # Output requested properties
         if "gradient" in request:
@@ -484,11 +504,18 @@ class OpenMolcas(AbinitioBase):
 
     def _read_xms_energies(self, output):
         """Read energies from log file"""
-        out = self.reader(output, ["XMS_Energies_OpMol"], {"nstates": self.nstates})
-        if not isinstance(out["XMS_Energies_OpMol"], list):
-            ene = [out["XMS_Energies_OpMol"]]
+        if self.nstates == 1:
+            out = self.reader(output, ["CASPT2_Energy_OpMol"], {"nstates": self.nstates})
+            if not isinstance(out["CASPT2_Energy_OpMol"], list):
+                ene = [out["CASPT2_Energy_OpMol"]]
+            else:
+                ene = out["CASPT2_Energy_OpMol"]
         else:
-            ene = out["XMS_Energies_OpMol"]
+            out = self.reader(output, ["XMS_Energies_OpMol"], {"nstates": self.nstates})
+            if not isinstance(out["XMS_Energies_OpMol"], list):
+                ene = [out["XMS_Energies_OpMol"]]
+            else:
+                ene = out["XMS_Energies_OpMol"]
         return ene
 
     def _read_f_osc(self, output):
@@ -550,7 +577,7 @@ class OpenMolcas(AbinitioBase):
         return nacs
 
     def _read_grads(self, state):
-        self.outputs = self._do_sa_casscf_ene_grad_nacs(state)
+        #self.outputs = self._do_sa_casscf_ene_grad_nacs(state)
         out = self.reader(
             self.outputs.output_grad_nacs,
             ["Gradient_OpMol"],
@@ -686,8 +713,12 @@ class OpenMolcas(AbinitioBase):
         infile = filename.replace(".in", "")
         output_ene = infile + ".rasscf.h5"
         output_grad_nacs = infile + ".log"
-        nt = "-f"
-        cmd = f"$MOLCAS/{self.exe} {filename} {nt}"
+        nt = "-nt"
+        f = "-f"
+        threads = 1
+        cmd = f"{self.exe} {filename} {nt} {threads} {f}"
+        #cmd = f"{self.exe} {filename} {nt}"
+        #cmd = f"$MOLCAS/{self.exe} {filename} {nt}"
         os.system(cmd)
         outputs = namedtuple("outputs", "output_ene output_grad_nacs")
         return outputs(output_ene, output_grad_nacs)
@@ -695,14 +726,16 @@ class OpenMolcas(AbinitioBase):
 
 if __name__ == "__main__":
     from pysurf.database import PySurfDB
-    from pysurf.spp import SurfacePointProvider
+    from pysurf.spp.request import Request
+    #from pysurf.spp import SurfacePointProvider
+    from numpy import copy 
 
     # def read_h5(filename, key):
     #    db =  h5py.File(filename, "r")
     #    return copy(db[key])
 
-    db_file = "init.db"
-    # db_file = "sampling.db"
+    #db_file = "init.db"
+    db_file = "sampling.db"
     db = PySurfDB.load_database(db_file, read_only=True)
     # db_file = "omolcas.rasscf.h5"
     # ene= read_h5(db_file,'CENTER_COORDINATES')
@@ -710,23 +743,39 @@ if __name__ == "__main__":
     crd = copy(db["crd"][0])
     atomids = copy(db["atomids"])
     natoms = len(crd)
-    nstates = 3
     print(crd)
+    # Ab-inito dynamics (BO approach)
+
+    #out = OpenMolcas.from_questions(config="spp.inp",atomids=atomids,natoms=natoms,nstates=None)
+    out = OpenMolcas.from_questions(config="spp.inp",atomids=atomids,nstates=None,nghost_states = None)
+    
+    # Create request for ground state (state 0)
+    request = Request(crd, ['energy', 'gradient'], [0])
+
+    # Run calculation
+    response = out.get(request)
+
+    # Print results
+    print("Energy:", response['energy'])
+    print("Gradient:", response['gradient'][0])
+
+    # Nonadiabatic Dynamics 
+    nstates = 3
     # out = OpenMolcasReader("omolcas.log",["Gradient_OpMol", "NACs_Index_OpMol", "NACs_OpMol"],{"natoms":natoms})
     # print("NACs_index:",out["NACs_Index_OpMol"][0][1])
     # print("NACs_index:",out["NACs_Index_OpMol"])
     # print("NACs:",out["NACs_OpMol"])
     # print("Grad:",out["Gradient_OpMol"])
-    state = copy(db["currstate"]) + 1
-    # out = OpenMolcas.from_questions(atomids, nstates = 3, config = "spp.inp", nghost_states = None)
-    # spp = SurfacePointProvider.from_questions(['energy', 'gradient', 'nacs'], nstates, natoms, atomids=atomids, config='spp.inp')
-    spp = SurfacePointProvider.from_questions(
-        ["energy", "fosc"], nstates, natoms, atomids=atomids, config="spp.inp"
-    )
-    # res = spp.request(crd, ['energy','gradient','nacs'], states=[state])
-    res = spp.request(crd, ["energy", "fosc"], states=[1])
-    print("ENE:", res["energy"])
-    print("OSC:", res["fosc"])
+    ##state = copy(db["currstate"]) + 1
+    ### out = OpenMolcas.from_questions(atomids, nstates = 3, config = "spp.inp", nghost_states = None)
+    ### spp = SurfacePointProvider.from_questions(['energy', 'gradient', 'nacs'], nstates, natoms, atomids=atomids, config='spp.inp')
+    ##spp = SurfacePointProvider.from_questions(
+    ##    ["energy", "fosc"], nstates, natoms, atomids=atomids, config="spp.inp"
+    ##)
+    ### res = spp.request(crd, ['energy','gradient','nacs'], states=[state])
+    ##res = spp.request(crd, ["energy", "fosc"], states=[1])
+    ##print("ENE:", res["energy"])
+    ##print("OSC:", res["fosc"])
     # print("NACS:",res['nacs'])
     # print("GRAD:",res['gradient'][1])
 
