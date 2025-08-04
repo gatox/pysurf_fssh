@@ -21,6 +21,8 @@ class SubmitTrajectories:
         for line in prop:
             if "use_db =" in line:
                 use_db = str(line.split()[2])
+            if "software =" in line:
+                self.software = str(line.split()[2])
         return use_db 
 
     def read_prop(self):
@@ -38,7 +40,10 @@ class SubmitTrajectories:
             subfolder = os.path.join("prop",traj)
             try:
                 if method == "Born_Oppenheimer":
-                    run(['sbatch pysurf_pynof_dynamics.sh'], cwd=subfolder, check=True, shell=True)
+                    if self.software == "OpenMolcas": 
+                        run(['sbatch pysurf_openmolcas_dynamics.sh'], cwd=subfolder, check=True, shell=True)
+                    elif self.software == "IntPynof": 
+                        run(['sbatch pysurf_pynof_dynamics.sh'], cwd=subfolder, check=True, shell=True)
                 elif method == "LandauZener":
                     if use_db == "yes":
                         run(['sbatch db_lz_run.sh'], cwd=subfolder, check=True, shell=True)
