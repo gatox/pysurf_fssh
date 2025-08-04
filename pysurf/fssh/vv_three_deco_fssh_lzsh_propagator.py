@@ -165,8 +165,8 @@ class BornOppenheimer:
         return ekin
 
     def setup(self, state):
-        state.ene = self.get_energy(state.crd)
         grad = self.get_gradient(state.crd, state.instate)
+        state.ene = self.get_energy(state.crd)
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
         return grad
@@ -953,7 +953,7 @@ class State(Colt):
                 self.substeps = False
         elif config["method"] == "Born_Oppenheimer":
             self.method = "Born_Oppenheimer"
-            self.activate_BO = config["Born_Oppenheimer"]["activate_BO"]
+            self.activate_BO = config["method"]["activate_BO"]
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
@@ -964,10 +964,10 @@ class State(Colt):
         self.vk = []
         self.u = []
         self.rho = []
-        if np.isscalar(self.mass):
+        if isscalar(self.mass):
             self.natoms = 1
-        elif isinstance(self.mass, np.ndarray) != True:
-            self.natoms = np.array([self.mass])
+        elif isinstance(self.mass, ndarray) != True:
+            self.natoms = array([self.mass])
         if config["thermostat"] == "True":
             self.thermostat = True
             self.xi = config["thermostat"]["xi"]
