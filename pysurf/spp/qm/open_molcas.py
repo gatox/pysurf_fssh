@@ -31,10 +31,22 @@ def length(kwargs):
     return int(natoms)
 
 
-def length_ene(kwargs):
-    nstates = kwargs["nstates"]
-    return int(nstates)
+#def length_ene(kwargs):
+#    nstates = None
+#    nstates = kwargs["nstates"]
+#    if nstates is None:
+#        return 1
+#    else:
+#        return int(nstates)
 
+def length_ene(kwargs):
+    nstates = kwargs.get("nstates", None)
+    if nstates is None:
+        return 1
+    try:
+        return int(nstates)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid value for nstates: {nstates}")
 
 def length_osc(kwargs):
     nstates = kwargs["nstates"]
@@ -479,13 +491,13 @@ class OpenMolcas(AbinitioBase):
         # update coordinates
         self.molecule.crd = request.crd
 
-        # Check if coordinates are the same as last call
-        if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
-            for state in request.states: 
-                self.outputs = self._do_sa_casscf_ene_grad_nacs(state)
-            self._last_crd = np.copy(request.crd)
-        print("crd:",request.crd)
-        print("last_crd:",self._last_crd)
+        ## Check if coordinates are the same as last call
+        #if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
+        #    for state in request.states: 
+        #        self.outputs = self._do_sa_casscf_ene_grad_nacs(state)
+        #    self._last_crd = np.copy(request.crd)
+        #print("crd:",request.crd)
+        #print("last_crd:",self._last_crd)
 
         # Output requested properties
         if "gradient" in request:
@@ -506,10 +518,11 @@ class OpenMolcas(AbinitioBase):
         """Read energies from log file"""
         if self.nstates == 1:
             out = self.reader(output, ["CASPT2_Energy_OpMol"], {"nstates": self.nstates})
-            if not isinstance(out["CASPT2_Energy_OpMol"], list):
-                ene = [out["CASPT2_Energy_OpMol"]]
-            else:
-                ene = out["CASPT2_Energy_OpMol"]
+            #if not isinstance(out["CASPT2_Energy_OpMol"], list):
+            #    ene = [out["CASPT2_Energy_OpMol"]]
+            #else:
+            #    ene = out["CASPT2_Energy_OpMol"]
+            ene = out["CASPT2_Energy_OpMol"][0]
         else:
             out = self.reader(output, ["XMS_Energies_OpMol"], {"nstates": self.nstates})
             if not isinstance(out["XMS_Energies_OpMol"], list):
@@ -577,7 +590,7 @@ class OpenMolcas(AbinitioBase):
         return nacs
 
     def _read_grads(self, state):
-        #self.outputs = self._do_sa_casscf_ene_grad_nacs(state)
+        self.outputs = self._do_sa_casscf_ene_grad_nacs(state)
         out = self.reader(
             self.outputs.output_grad_nacs,
             ["Gradient_OpMol"],
@@ -744,24 +757,27 @@ if __name__ == "__main__":
     atomids = copy(db["atomids"])
     natoms = len(crd)
     print(crd)
-    # Ab-inito dynamics (BO approach)
+    ## Ab-inito dynamics (BO approach)
 
-    #out = OpenMolcas.from_questions(config="spp.inp",atomids=atomids,natoms=natoms,nstates=None)
-    out = OpenMolcas.from_questions(config="spp.inp",atomids=atomids,nstates=None,nghost_states = None)
-    
-    # Create request for ground state (state 0)
-    request = Request(crd, ['energy', 'gradient'], [0])
+    ##out = OpenMolcas.from_questions(config="spp.inp",atomids=atomids,natoms=natoms,nstates=None)
+    #out = OpenMolcas.from_questions(config="spp.inp",atomids=atomids,nstates=None,nghost_states = None)
+    #
+    ## Create request for ground state (state 0)
+    #request = Request(crd, ['energy', 'gradient'], [0])
 
-    # Run calculation
-    response = out.get(request)
+    ## Run calculation
+    #response = out.get(request)
 
-    # Print results
-    print("Energy:", response['energy'])
-    print("Gradient:", response['gradient'][0])
+    ## Print results
+    #print("Energy:", response['energy'])
+    #print("Gradient:", response['gradient'][0])
+    out = OpenMolcasReader("omolcas.log",["CASPT2_Energy_OpMol","Gradient_OpMol"],{"natoms":natoms})
+    print("Energy:",out["CASPT2_Energy_OpMol"])
+    print("Grad:",out["Gradient_OpMol"])
 
     # Nonadiabatic Dynamics 
     nstates = 3
-    # out = OpenMolcasReader("omolcas.log",["Gradient_OpMol", "NACs_Index_OpMol", "NACs_OpMol"],{"natoms":natoms})
+    #out = OpenMolcasReader("omolcas.log",["Gradient_OpMol", "NACs_Index_OpMol", "NACs_OpMol"],{"natoms":natoms})
     # print("NACs_index:",out["NACs_Index_OpMol"][0][1])
     # print("NACs_index:",out["NACs_Index_OpMol"])
     # print("NACs:",out["NACs_OpMol"])

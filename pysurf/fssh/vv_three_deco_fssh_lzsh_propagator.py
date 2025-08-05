@@ -134,7 +134,7 @@ class BornOppenheimer:
     needed_properties = ["energy", "gradient"]
 
     def __init__(self, state):
-        self.nstates = state.instate # Pynof works only for G.S. Originaly: state.nstates
+        self.nstates = 1 # Pynof works only for G.S. Originaly: state.nstates
         self.natoms = state.natoms
         self.spp = SurfacePointProvider.from_questions(
             ["energy", "gradient"],
@@ -1216,12 +1216,21 @@ class PrintResults:
 
     def _read_spp_inf(self):
         spp = open("spp.inp", 'r+')
+        software_inf = None
+        ipnof_inf = None
         for line in spp:
-            if "software = IntPynof" in line:
-                software_inf = "PyNof"
-            elif "ipnof =" in line:
+            #if "software = IntPynof" in line:
+            if "software = " in line:
+                software_inf = str(line.split()[2]) 
+                if software_inf == "IntPynof":
+                    software_inf = "Pynof"
+            if "ipnof =" in line:
                 ipnof_inf = str(line.split()[2])
-            elif "basis =" in line:
+            if "caspt2 = yes" in line:
+                ipnof_inf = "caspt2" 
+            if "caspt2 = not" in line:
+                ipnof_inf = "sacasscf" 
+            if "basis =" in line:
                 basis_inf = str(line.split()[2])
         spp_inf = namedtuple(
                 "spp_inf",
@@ -1323,8 +1332,10 @@ class PrintResults:
             self.gen_results.write(f"   Software: {inf_BO.software_inf} \n")
             if inf_BO.software_inf == "PyNof":
                 self.gen_results.write(f"   Functional: Piris {inf_BO.ipnof_inf} \n")
+            elif inf_BO.software_inf == "OpenMolcas":
+                self.gen_results.write(f"   Level_of_Theory: OpenMolcas/{inf_BO.ipnof_inf} \n")
             else:
-                self.gen_results.write(f"   Functional: N/A \n")
+                self.gen_results.write(f"   Level_of_Theory: N/A \n")
             self.gen_results.write(f"   Basis: {inf_BO.basis_inf} \n")
             self.gen_results.write(f"Computing a Born Oppenheimer simulation:\n")
             self.gen_results.write(self.dash_bo + "\n")
