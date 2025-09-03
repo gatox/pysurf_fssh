@@ -1,0 +1,16 @@
+db_file = sampling.db
+t = 0.0
+dt = 5
+mdsteps = 83
+substeps = 
+rescale_vel = 
+instate = 0
+save_properties = parameter
+thermostat = False
+method = Born_Oppenheimer
+
+[thermostat(False)]
+therm = False
+
+[method(Born_Oppenheimer)]
+activate_BO = 0

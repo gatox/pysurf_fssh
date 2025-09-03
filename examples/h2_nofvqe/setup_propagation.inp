@@ -1,0 +1,6 @@
+sampling_input = sampling.inp
+sampling_db = sampling.db
+spp = spp.inp
+initial state = 0
+prop = prop.inp
+copy_db = none

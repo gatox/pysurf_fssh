@@ -1,0 +1,18 @@
+logging = debug
+mode = ab-initio
+use_db = no
+
+[mode(ab-initio)]
+software = IntNOFVQE
+
+[mode(ab-initio)::software(IntNOFVQE)]
+chg = 0
+mult = 1
+basis = sto-3g
+functional = pnof4
+conv_tol = 1.0e-6
+max_iterations = 500
+gradient = df_fedorov
+d_shift = 0.0001
+
+[use_db(no)]

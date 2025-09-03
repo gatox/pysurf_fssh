@@ -1,0 +1,12 @@
+n_conditions_max = 1
+method = FixedSampler
+sampling_db = sampling.db
+
+[method(FixedSampler)]
+from = Geometry
+
+[method(FixedSampler)::from(Geometry)]
+xyzfile = h2_bohr.xyz
+atoms = 
+coords = 
+velocities = 
