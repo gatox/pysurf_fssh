@@ -57,6 +57,7 @@ class PySurfDB(Database):
         etot      = double :: (frame, one)
         nacs      = double :: (frame, nstates, nstates, natoms, three)
         sts_mom   = double :: (frame, nstates, nstates)
+        parameter = double :: (frame, one)
     """
     )["variables"]
 
@@ -82,6 +83,7 @@ class PySurfDB(Database):
         epot      = double :: (frame, one)
         etot      = double :: (frame, one)
         nacs      = double :: (frame, nstates, nstates, nmodes)
+        parameter = double :: (frame, one)
     """
     )["variables"]
 

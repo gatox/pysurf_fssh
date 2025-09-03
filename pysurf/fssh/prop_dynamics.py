@@ -34,11 +34,13 @@ class State(Colt):
     instate = 0 :: int
     #--------------------------------------------------------------------------
     # Save additional properties: 
-    # Oscillation string (fosc) and state-to-state transition moments (sts_mom)
-    # Note: These properties are available in Q-Chem.
+    # Oscillation string (fosc), state-to-state transition moments (sts_mom)
+    # and optimal parameter after vqe performance (parameter).
+    # Note: The first two properties are available in Q-Chem and the latter 
+    # one in NOFVQE.
     #       Press Enter to skip this step.
     #--------------------------------------------------------------------------
-    save_properties = :: str, optional :: fosc, sts_mom
+    save_properties = :: str, optional :: fosc, sts_mom, parameter
     #==========================================================================
     #                            Nose-Hoover thermostat
     #==========================================================================
@@ -186,10 +188,13 @@ class State(Colt):
         self.additional = {}
 
     def save_additional(self, db):
-        # either add fosc or sts_mom
-        print("we are saving: ", self.additional)
-        for prop, value in self.additional.items():
-            db.set(prop, value)
+        if not self.save_properties:
+            return
+        #print("we are saving:", self.additional)
+        for prop in self.save_properties:
+            if prop in self.additional:
+                db.set(prop, self.additional[prop])
+
 
     @classmethod
     def from_config(cls, config):
