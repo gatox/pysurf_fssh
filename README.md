@@ -4,7 +4,7 @@
 
 #
 
-[PySurf-FSSH](https://doi.org/10.1021/acs.jctc.4c00012) is an extension of the [PySurf](https://github.com/mfsjmenger/pysurf) software package that enables nonadiabatic molecular dynamics simulations using the Tully’s fewest switches surface hopping (FSSH) scheme or the Landau–Zener surface hopping (LZSH) method. It includes built-in interfaces with several quantum chemistry packages such as [Q-Chem](https://manual.q-chem.com/latest/), [OpenMolcas](https://gitlab.com/Molcas/OpenMolcas), [BAGEL](https://nubakery.org/), and the quantum algorithm State-Averaged Orbital-Optimized VQE ([SAOOVQE](https://github.com/qc2nl/SAOOVQE)). Thanks to PySurf’s flexible architecture, new interfaces can be added with minimal effort. As a demonstration, an analytical Linear Vibronic Coupling (LVC) model is also included, providing a fast and accessible way to test and extend PySurf-FSSH functionality.
+[PySurf-FSSH](https://doi.org/10.1021/acs.jctc.4c00012) is an extension of the [PySurf](https://github.com/mfsjmenger/pysurf) software package that enables nonadiabatic molecular dynamics simulations using the Tully’s fewest switches surface hopping (FSSH) scheme or the Landau–Zener surface hopping (LZSH) method. It includes built-in interfaces with several quantum chemistry packages such as [Q-Chem](https://manual.q-chem.com/latest/), [OpenMolcas](https://gitlab.com/Molcas/OpenMolcas), [BAGEL](https://nubakery.org/), and quantum algorithms such as the State-Averaged Orbital-Optimized Variational Quantum Eigensolver ([SAOOVQE](https://github.com/qc2nl/SAOOVQE)) and the Natural Orbital Functional Variational Quantum Eigensolver ([NOFVQE](https://github.com/felipelewyee/NOF-VQE)). Thanks to PySurf’s flexible architecture, new interfaces can be added with minimal effort. As a demonstration, an analytical Linear Vibronic Coupling (LVC) model is also included, providing a fast and accessible way to test and extend PySurf-FSSH functionality.
 
 ---
 
@@ -27,7 +27,7 @@
 `pysurf_fssh` is a plugin for [PySurf](https://github.com/mfsjmenger/pysurf) that requires an external electronic structure package to compute the necessary electronic properties for dynamics (e.g., energies, gradients, nonadiabatic couplings). The following quantum chemistry packages are supported:
 
 - Quantum chemistry software such as [Q-Chem](https://manual.q-chem.com/latest/), [OpenMolcas](https://gitlab.com/Molcas/OpenMolcas), and [BAGEL](https://nubakery.org/)
-- Quantum algorithms such as [SAOOVQE](https://github.com/qc2nl/SAOOVQE)
+- Quantum algorithms such as [SAOOVQE](https://github.com/qc2nl/SAOOVQE) and [NOFVQE](https://github.com/gatox/PennyLane_Exercises)
 - Model Hamiltonians such as an analytical LVC model (included as an example)
 
 ### \:wrench: Setup PySurf-FSSH
@@ -109,7 +109,7 @@ python /full/path/to/pysurf_fssh/bin/run_trajectory.py
 
 Replace `/full/path/to/` with the actual absolute paths on your system.
 
-To inspect results:
+### Inspecting results
 
 ```bash
 ncdump -v currstate results.db
@@ -118,7 +118,80 @@ cat gen_results.out
 
 ---
 
-## 2. CH₂NH + SAOOVQE (Ab Initio)
+## 2. H₂ + NOFVQE (Ab Initio)
+
+Located in: `examples/h2_nofvqe/`
+
+This example requires access to the **NOFVQE** algorithm. The original implementation can be found in the [NOFVQE](https://github.com/felipelewyee/NOF-VQE) repository.  
+
+For this example, we use a **modular version** of the code, which is **temporarily** hosted in the 
+[NOFVQE_modular](https://github.com/gatox/PennyLane_Exercises) repository, under:
+
+```
+PennyLane_Exercises/test_nof_vqe/NOFVQE/
+```
+
+Please make sure it is installed and working before attempting this example.
+
+> For proper compatibility when using **PySurf-FSSH** with **NOFVQE**, we recommend using the following branches:
+>   - **PySurf-FSSH**: use the `pynof_branch` branch (required)
+>   - **NOFVQE**: use the `main` branch (default and recommended)
+>
+> To switch branches:
+>
+> ```bash
+> cd pysurf_fssh
+> git checkout pynof_branch
+> 
+> cd ../PennyLane_Exercises
+> cd test_nof_vqe/NOFVQE
+> git checkout main
+> ```
+
+### Environment setup
+
+Add the following line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.) so that Python can find the NOFVQE code:
+
+```bash
+export PYTHONPATH=/full/path/to/PennyLane_Exercises/test_nof_vqe/NOFVQE:$PYTHONPATH
+```
+
+Replace `/full/path/to/` with the actual absolute path on your system.
+
+### Input setup
+
+- 1 trajectory generated with a fixed sampler to provide the same initial position and zero velocity (`sampling.inp`)
+- Time step: 5 a.u. (~0.125 fs)
+- Total time: 83 steps (~10 fs)
+- Settings in `spp.inp`, `prop.inp`
+- The interface used is `nofvqe_i.py`
+- This example is set up with **no thermostat**
+- Only one trajectory is present under `prop/traj_00000000/`
+
+### How to run
+
+```bash
+cd h2_nofvqe
+python /full/path/to/pysurf_fssh/bin/sampling.py
+python /full/path/to/pysurf_fssh/bin/setup_propagation.py
+
+# run the trajectory No. 0
+cd prop/traj_00000000
+python /full/path/to/pysurf_fssh/bin/run_trajectory.py
+```
+
+Replace `/full/path/to/` with the actual absolute paths on your system.
+
+### Inspecting results
+
+```bash
+ncdump -v etot results.db
+cat gen_results.out
+```
+
+---
+
+## 3. CH₂NH + SAOOVQE (Ab Initio)
 
 Located in: `examples/ch2nh_saoovqe/`
 
