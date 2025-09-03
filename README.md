@@ -27,7 +27,7 @@
 `pysurf_fssh` is a plugin for [PySurf](https://github.com/mfsjmenger/pysurf) that requires an external electronic structure package to compute the necessary electronic properties for dynamics (e.g., energies, gradients, nonadiabatic couplings). The following quantum chemistry packages are supported:
 
 - Quantum chemistry software such as [Q-Chem](https://manual.q-chem.com/latest/), [OpenMolcas](https://gitlab.com/Molcas/OpenMolcas), and [BAGEL](https://nubakery.org/)
-- Quantum algorithms such as [SAOOVQE](https://github.com/qc2nl/SAOOVQE) and [NOFVQE](https://github.com/gatox/PennyLane_Exercises)
+- Quantum algorithms such as [SAOOVQE](https://github.com/qc2nl/SAOOVQE) and [NOFVQE](https://github.com/felipelewyee/NOF-VQE)
 - Model Hamiltonians such as an analytical LVC model (included as an example)
 
 ### \:wrench: Setup PySurf-FSSH
