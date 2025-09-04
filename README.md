@@ -160,7 +160,7 @@ export PYTHONPATH=/full/path/to/PennyLane_Exercises/test_nof_vqe/NOFVQE:$PYTHONP
 
 Replace `/full/path/to/` with the actual absolute path on your system.
 
-4. Enable the NOFVQE interface by editing `core_plugins/plugins.ini`:
+4. Enable the NOFVQE interface by editing `pysurf_fssh/core_plugins/plugins.ini`:
 
 ```ini
 # To enable the NOFVQE interface, make sure the following line is commented:
@@ -226,7 +226,7 @@ If you **do not** have access to SAOOVQE, you can still test `pysurf_fssh` funct
 
 1. **Install SAOOVQE** following its official instructions.
 2. Install `pysurf_fssh` as described in the installation section.
-3. Enable the SAOOVQE interface by editing `core_plugins/plugins.ini`:
+3. Enable the SAOOVQE interface by editing `pysurf_fssh/core_plugins/plugins.ini`:
 
 ```ini
 # To enable the SAOOVQE interface, make sure the following line is commented:
