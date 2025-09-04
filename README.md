@@ -122,10 +122,9 @@ cat gen_results.out
 
 Located in: `examples/h2_nofvqe/`
 
-This example requires access to the **NOFVQE** algorithm. The original implementation can be found in the [NOFVQE](https://github.com/felipelewyee/NOF-VQE) repository.  
+This example requires access to the **NOFVQE** algorithm. We use a **modularized version of NOFVQE**, implemented as a Python module and adapted from the original Jupyter notebooks in the [NOFVQE](https://github.com/felipelewyee/NOF-VQE) repository. This modularization facilitates an easy interface with PySurf-FSSH. 
 
-For this example, we use a **modular version** of the code, which is **temporarily** hosted in the 
-[NOFVQE_modular](https://github.com/gatox/PennyLane_Exercises) repository, under:
+The modularized version is **temporarily** hosted in the [NOFVQE_modular](https://github.com/gatox/PennyLane_Exercises) repository, under:
 
 ```
 PennyLane_Exercises/test_nof_vqe/NOFVQE/
@@ -151,8 +150,8 @@ Please make sure it is installed and working before attempting this example.
 ### Setup Instructions
 
 1. Install `pysurf_fssh` as described in the installation section.
-2. Clone the **modular NOFVQE** repository mentioned above.
-3. Add the following line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.) so that Python can find the NOFVQE code:
+2. Clone the **modularized version of NOFVQE** (temporarily hosted in the `NOFVQE_modular` repository mentioned above).
+4. Add the following line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.) so that Python can find the NOFVQE code:
 
 ```bash
 export PYTHONPATH=/full/path/to/PennyLane_Exercises/test_nof_vqe/NOFVQE:$PYTHONPATH
