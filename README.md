@@ -150,13 +150,21 @@ Please make sure it is installed and working before attempting this example.
 
 ### Environment setup
 
-Add the following line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.) so that Python can find the NOFVQE code:
+1. Add the following line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.) so that Python can find the NOFVQE code:
 
 ```bash
 export PYTHONPATH=/full/path/to/PennyLane_Exercises/test_nof_vqe/NOFVQE:$PYTHONPATH
 ```
 
 Replace `/full/path/to/` with the actual absolute path on your system.
+
+2. Enable the NOFVQE interface by editing `core_plugins/plugins.ini`:
+
+```ini
+# To enable the NOFVQE interface, make sure the following line is commented:
+# interfaces/nofvqe_i.py
+```
+> :warning: **Note:** Although it may seem counterintuitive, the NOFVQE interface is enabled when this line is commented (i.e., prefixed with #).
 
 ### Input setup
 
