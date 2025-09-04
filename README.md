@@ -148,9 +148,11 @@ Please make sure it is installed and working before attempting this example.
 > git checkout main
 > ```
 
-### Environment setup
+### Setup Instructions
 
-1. Add the following line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.) so that Python can find the NOFVQE code:
+1. Install `pysurf_fssh` as described in the installation section.
+2. Clone the **modular NOFVQE** repository mentioned above.
+3. Add the following line to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.) so that Python can find the NOFVQE code:
 
 ```bash
 export PYTHONPATH=/full/path/to/PennyLane_Exercises/test_nof_vqe/NOFVQE:$PYTHONPATH
@@ -158,7 +160,7 @@ export PYTHONPATH=/full/path/to/PennyLane_Exercises/test_nof_vqe/NOFVQE:$PYTHONP
 
 Replace `/full/path/to/` with the actual absolute path on your system.
 
-2. Enable the NOFVQE interface by editing `core_plugins/plugins.ini`:
+4. Enable the NOFVQE interface by editing `core_plugins/plugins.ini`:
 
 ```ini
 # To enable the NOFVQE interface, make sure the following line is commented:
@@ -223,7 +225,7 @@ If you **do not** have access to SAOOVQE, you can still test `pysurf_fssh` funct
 ### Setup Instructions
 
 1. **Install SAOOVQE** following its official instructions.
-2. Then install `pysurf_fssh` as described in the installation section.
+2. Install `pysurf_fssh` as described in the installation section.
 3. Enable the SAOOVQE interface by editing `core_plugins/plugins.ini`:
 
 ```ini
