@@ -46,7 +46,7 @@ conda activate pysurf_fssh
 1. **Create and activate a new environment**
 
     ```bash
-    conda create -y -n pysurf_fssh python=3.9
+    conda create -y -n pysurf_fssh python=3.12
     conda activate pysurf_fssh
     ```
 
@@ -57,8 +57,7 @@ conda activate pysurf_fssh
     cd pysurf_fssh
 
     # pysurf_fssh dependencies
-    conda install -c conda-forge numpy scipy matplotlib h5py netcdf4
-    pip install pycolt qctools jinja2
+    pip install numpy scipy matplotlib h5py netcdf4 pycolt qctools jinja2
     ```
 
 3. **Set environment variables**
@@ -130,7 +129,10 @@ The modularized version is **temporarily** hosted in the [NOFVQE_modular](https:
 PennyLane_Exercises/test_nof_vqe/NOFVQE/
 ```
 
-Please make sure it is installed and working before attempting this example.
+Please make sure it is installed and working before attempting this example. This includes installing pennylane
+```bash
+pip install pennylane
+```
 
 > For proper compatibility when using **PySurf-FSSH** with **NOFVQE**, we recommend using the following branches:
 >   - **PySurf-FSSH**: use the `pynof_branch` branch (required)
