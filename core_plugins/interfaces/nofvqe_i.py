@@ -179,7 +179,7 @@ if __name__=='__main__':
     atomids = copy(db['atomids'])
     natoms = len(crd)
 
-    out = IntNOFVQE.from_questions(config="spp.inp",
+    out = IntNOFVQE.from_questions(config="spp_main.inp",
                                    atomids=atomids,
                                    natoms=natoms,
                                    nstates=None)

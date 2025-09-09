@@ -57,7 +57,8 @@ conda activate pysurf_fssh
     cd pysurf_fssh
 
     # pysurf_fssh dependencies
-    pip install numpy scipy matplotlib h5py netcdf4 pycolt qctools jinja2
+    conda install -c conda-forge python=3.12 numpy scipy matplotlib h5py netcdf4
+    pip install pycolt qctools jinja2
     ```
 
 3. **Set environment variables**
@@ -129,10 +130,14 @@ The modularized version is **temporarily** hosted in the [NOFVQE_modular](https:
 PennyLane_Exercises/test_nof_vqe/NOFVQE/
 ```
 
-Please make sure it is installed and working before attempting this example. This includes installing pennylane
+Please make sure it is installed and working before attempting this example. This includes installing pennylane, jax and optax.
 ```bash
 pip install pennylane
+pip install "jax~=0.6.0" "jaxlib~=0.6.0"
+pip install optax
 ```
+> :warning: **Note:** PennyLane is not yet compatible with JAX versions ≥ 0.7.0.
+Make sure you install jax and jaxlib in the 0.6.x series.
 
 > For proper compatibility when using **PySurf-FSSH** with **NOFVQE**, we recommend using the following branches:
 >   - **PySurf-FSSH**: use the `pynof_branch` branch (required)
