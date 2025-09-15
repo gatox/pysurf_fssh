@@ -142,7 +142,9 @@ class FixedSampler(DynSamplerBase):
         self.system = system
         self.generated = False
         self._velocities = None if velocities is None else np.array(velocities, dtype=float)
-
+        self.generated_count = 0
+        self.nmax = 1  # default, overridden later
+        
     @classmethod
     def from_config(cls, config, start=0):
         """
@@ -166,7 +168,7 @@ class FixedSampler(DynSamplerBase):
         return {"system": self.system, "modes": None}
 
     def get_condition(self):
-        if self.generated:
+        if self.generated_count >= self.nmax:
             return None
         if self.system is None:
             raise RuntimeError("FixedSampler: no system defined")
@@ -177,7 +179,9 @@ class FixedSampler(DynSamplerBase):
             veloc = np.copy(self._velocities)
         state = 0
         self.generated = True
+        self.generated_count += 1
         return DynCondition(crd, veloc, state)
 
     def get_number_of_conditions(self, nmax):
-        return 1
+        self.nmax = nmax
+        return nmax 
