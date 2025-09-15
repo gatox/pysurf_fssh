@@ -130,13 +130,13 @@ The modularized version is **temporarily** hosted in the [NOFVQE_modular](https:
 PennyLane_Exercises/test_nof_vqe/NOFVQE/
 ```
 
-Please make sure it is installed and working before attempting this example. This includes installing psi4, [pynof](https://github.com/felipelewyee/PyNOF), pennylane, optax and jax.
+Please make sure it is installed and working before attempting this example. This includes installing pennylane, jax, optax, psi4 and [pynof](https://github.com/felipelewyee/PyNOF).
 ```bash
+pip install pennylane
+pip install "jax~=0.6.0" "jaxlib~=0.6.0"
+pip install optax
 conda install -y psi4 -c conda-forge/label/libint_dev -c conda-forge
 pip install pynof
-pip install pennylane
-pip install optax
-pip install --force-reinstall "jax~=0.6.0" "jaxlib~=0.6.0"
 ```
 > :warning: **Note:** PennyLane is not yet compatible with JAX versions ≥ 0.7.0.
 > Make sure you install jax and jaxlib in the 0.6.x series.
