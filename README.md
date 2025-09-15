@@ -137,8 +137,8 @@ pip install "jax~=0.6.0" "jaxlib~=0.6.0"
 pip install optax
 ```
 > :warning: **Note:** PennyLane is not yet compatible with JAX versions ≥ 0.7.0.
-Make sure you install jax and jaxlib in the 0.6.x series.
-
+> Make sure you install jax and jaxlib in the 0.6.x series.
+> 
 > For proper compatibility when using **PySurf-FSSH** with **NOFVQE**, we recommend using the following branches:
 >   - **PySurf-FSSH**: use the `pynof_branch` branch (required)
 >   - **NOFVQE**: use the `main` branch (default and recommended)
