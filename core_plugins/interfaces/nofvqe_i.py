@@ -48,7 +48,16 @@ class IntNOFVQE(AbinitioBase):
     #--------------------------------------------------------------------------
     # Gradient: Ground state only available
     #--------------------------------------------------------------------------
-    gradient = df_fedorov :: str :: df_fedorov, df_normal
+    gradient = :: str :: analytics, df_fedorov, df_normal 
+    [gradient(analytics)]
+    analytics_grad = True :: bool
+    #--------------------------------------------------------------------------
+    [gradient(df_fedorov)]
+    #--------------------------------------------------------------------------
+    # Displaced geometries:
+    #--------------------------------------------------------------------------
+    d_shift = 1.0e-3 :: float 
+    [gradient(df_normal)]
     #--------------------------------------------------------------------------
     # Displaced geometries:
     #--------------------------------------------------------------------------
@@ -69,7 +78,8 @@ class IntNOFVQE(AbinitioBase):
                  conv_tol,
                  max_iterations, 
                  gradient,
-                 d_shift):
+                 d_shift,
+                 ):
         self.molecule = Molecule(atomids, None)
         self.natoms = len(atomids) 
         self.nstates = nstates
@@ -81,7 +91,10 @@ class IntNOFVQE(AbinitioBase):
         self.init_param = None
         self.max_iterations = max_iterations
         self.gradient = gradient
-        self.d_shift = d_shift
+        if self.gradient == "analytics":
+            self.d_shift = None
+        else:
+            self.d_shift = config["gradient"]["d_shift"]
         # self.icall = 0
         self._last_crd = None
 
@@ -102,7 +115,8 @@ class IntNOFVQE(AbinitioBase):
                    config['conv_tol'],
                    config['max_iterations'], 
                    config['gradient'],
-                   config['d_shift'])
+                   config.get("d_shift",None),
+                   )
 
 
     def get(self, request):
@@ -142,7 +156,7 @@ class IntNOFVQE(AbinitioBase):
                       gradient=self.gradient,
                       d_shift=self.d_shift)
         
-        E_min, params_opt, _ = nofvqe_class.ene_vqe()
+        E_min, params_opt, _, _, _, _, _ = nofvqe_class.ene_vqe()
         self.init_param = params_opt
         """Saving energy and gradient for the ground state"""
         self.energy = E_min
