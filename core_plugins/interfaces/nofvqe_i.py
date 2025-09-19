@@ -95,7 +95,7 @@ class IntNOFVQE(AbinitioBase):
             self.d_shift = None
         else:
             self.d_shift = config["gradient"]["d_shift"]
-        # self.icall = 0
+        self.icall = 0
         self._last_crd = None
 
     @classmethod
@@ -120,11 +120,11 @@ class IntNOFVQE(AbinitioBase):
 
 
     def get(self, request):
-        # if self.icall == 0:
-        #     self.read_param = False
-        #     self.icall = 1
-        # else:
-        #     self.read_param = True
+        if self.icall == 0:
+            self.C = None
+            self.icall = 1
+        else:
+            self.C = "guest_C_MO"
 
         # Update coordinates
         self.molecule.crd = request.crd
@@ -146,7 +146,7 @@ class IntNOFVQE(AbinitioBase):
     def _do_nofvqe_ene_grad(self):
         string_geo = self.tpl.render(chg=self.chg, mult=self.mult,
                      mol=self.molecule)
-                     
+            
         nofvqe_class = NOFVQE(string_geo,
                       functional=self.functional,
                       conv_tol=self.conv_tol,
@@ -154,7 +154,9 @@ class IntNOFVQE(AbinitioBase):
                       basis=self.basis,
                       max_iterations=self.max_iterations,
                       gradient=self.gradient,
-                      d_shift=self.d_shift)
+                      d_shift=self.d_shift,
+                      C_MO = self.C,
+                      )
         
         E_min, params_opt, _, _, _, _, _ = nofvqe_class.ene_vqe()
         self.init_param = params_opt
