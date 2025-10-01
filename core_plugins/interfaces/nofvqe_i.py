@@ -61,7 +61,26 @@ class IntNOFVQE(AbinitioBase):
     #--------------------------------------------------------------------------
     # Displaced geometries:
     #--------------------------------------------------------------------------
-    d_shift = 1.0e-3 :: float 
+    d_shift = 1.0e-3 :: float
+    #--------------------------------------------------------------------------
+    # Device: Note that the noise_simulator and real options only work with an
+    #         IBM account
+    #--------------------------------------------------------------------------
+    device = :: str :: simulator, noise_simulator, real
+    [device(simulator)]
+    dev_simulator = True :: bool
+    #--------------------------------------------------------------------------
+    [device(noise_simulator)]
+    #--------------------------------------------------------------------------
+    # Number of shots:
+    #--------------------------------------------------------------------------
+    n_shots = 1000 :: int 
+    [device(real)]
+    #--------------------------------------------------------------------------
+    # Number of shots:
+    #--------------------------------------------------------------------------
+    n_shots = 1000 :: int
+
     """
     tpl = tpl
 
@@ -79,6 +98,8 @@ class IntNOFVQE(AbinitioBase):
                  max_iterations, 
                  gradient,
                  d_shift,
+                 device,
+                 n_shots,
                  ):
         self.molecule = Molecule(atomids, None)
         self.natoms = len(atomids) 
@@ -95,6 +116,11 @@ class IntNOFVQE(AbinitioBase):
             self.d_shift = None
         else:
             self.d_shift = config["gradient"]["d_shift"]
+        self.device = device
+        if self.device == "simulator":
+            self.n_shots = None
+        else:
+            self.n_shots = config["device"]["n_shots"]
         self.icall = 0
         self._last_crd = None
 
@@ -116,6 +142,8 @@ class IntNOFVQE(AbinitioBase):
                    config['max_iterations'], 
                    config['gradient'],
                    config.get("d_shift",None),
+                   config['device'],
+                   config.get("n_shots",None),
                    )
 
 
@@ -156,6 +184,8 @@ class IntNOFVQE(AbinitioBase):
                       gradient=self.gradient,
                       d_shift=self.d_shift,
                       C_MO = self.C,
+                      dev=self.device,
+                      n_shots=self.n_shots,
                       )
         
         E_min, params_opt, _, _, _, _, _ = nofvqe_class.ene_vqe()
