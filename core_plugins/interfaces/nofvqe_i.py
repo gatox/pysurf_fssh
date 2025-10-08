@@ -72,15 +72,22 @@ class IntNOFVQE(AbinitioBase):
     #--------------------------------------------------------------------------
     [device(noise_simulator)]
     #--------------------------------------------------------------------------
-    # Number of shots:
+    # Number of shots: Circuit measurements for expectation values.
+    # Optimization level: Degree of circuit transpilation.
+    # Resilience level: Degree of error mitigation.
     #--------------------------------------------------------------------------
     n_shots = 1000 :: int 
+    optimization_level = 0 :: int
+    resilience_level = 0 :: int
     [device(real)]
     #--------------------------------------------------------------------------
-    # Number of shots:
+    # Number of shots: Circuit measurements for expectation values.
+    # Optimization level: Degree of circuit transpilation.
+    # Resilience level: Degree of error mitigation.
     #--------------------------------------------------------------------------
     n_shots = 1000 :: int
-
+    optimization_level = 0 :: int
+    resilience_level = 0 :: int
     """
     tpl = tpl
 
@@ -100,6 +107,8 @@ class IntNOFVQE(AbinitioBase):
                  d_shift,
                  device,
                  n_shots,
+                 optimization_level,
+                 resilience_level,
                  ):
         self.molecule = Molecule(atomids, None)
         self.natoms = len(atomids) 
@@ -119,8 +128,12 @@ class IntNOFVQE(AbinitioBase):
         self.device = device
         if self.device == "simulator":
             self.n_shots = None
+            self.optimization_level = None
+            self.resilience_level = None
         else:
             self.n_shots = config["device"]["n_shots"]
+            self.optimization_level = config["device"]["optimization_level"]
+            self.resilience_level = config["device"]["resilience_level"]
         self.icall = 0
         self._last_crd = None
 
@@ -144,6 +157,8 @@ class IntNOFVQE(AbinitioBase):
                    config.get("d_shift",None),
                    config['device'],
                    config.get("n_shots",None),
+                   config.get("optimization_level",None),
+                   config.get("resilience_level",None),
                    )
 
 
@@ -186,6 +201,8 @@ class IntNOFVQE(AbinitioBase):
                       C_MO = self.C,
                       dev=self.device,
                       n_shots=self.n_shots,
+                      optimization_level=self.optimization_level,
+                      resilience_level=self.resilience_level,
                       )
         
         E_min, params_opt, _, _, _, _, _ = nofvqe_class.ene_vqe()
