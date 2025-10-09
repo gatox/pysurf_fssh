@@ -46,9 +46,13 @@ class IntNOFVQE(AbinitioBase):
     #--------------------------------------------------------------------------
     max_iterations = 500 :: int  
     #--------------------------------------------------------------------------
+    # Optimization circuit methods:
+    #--------------------------------------------------------------------------
+    opt_circ = sgd :: str :: sgd, adam, slsqp, l-bfgs-b
+    #--------------------------------------------------------------------------
     # Gradient: Ground state only available
     #--------------------------------------------------------------------------
-    gradient = :: str :: analytics, df_fedorov, df_normal 
+    gradient = :: str :: analytics, df_fedorov, df_normal  
     [gradient(analytics)]
     analytics_grad = True :: bool
     #--------------------------------------------------------------------------
@@ -102,7 +106,8 @@ class IntNOFVQE(AbinitioBase):
                  mult,
                  functional,
                  conv_tol,
-                 max_iterations, 
+                 max_iterations,
+                 opt_circ,
                  gradient,
                  d_shift,
                  device,
@@ -120,6 +125,7 @@ class IntNOFVQE(AbinitioBase):
         self.conv_tol = conv_tol
         self.init_param = None
         self.max_iterations = max_iterations
+        self.opt_circ = opt_circ
         self.gradient = gradient
         if self.gradient == "analytics":
             self.d_shift = None
@@ -152,7 +158,8 @@ class IntNOFVQE(AbinitioBase):
                    config['mult'], 
                    config['functional'], 
                    config['conv_tol'],
-                   config['max_iterations'], 
+                   config['max_iterations'],
+                   config['opt_circ'],
                    config['gradient'],
                    config.get("d_shift",None),
                    config['device'],
@@ -196,6 +203,7 @@ class IntNOFVQE(AbinitioBase):
                       init_param=self.init_param,
                       basis=self.basis,
                       max_iterations=self.max_iterations,
+                      opt_circ=self.opt_circ,
                       gradient=self.gradient,
                       d_shift=self.d_shift,
                       C_MO = self.C,
