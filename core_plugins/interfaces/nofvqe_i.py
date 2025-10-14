@@ -48,7 +48,7 @@ class IntNOFVQE(AbinitioBase):
     #--------------------------------------------------------------------------
     # Optimization circuit methods:
     #--------------------------------------------------------------------------
-    opt_circ = sgd :: str :: sgd, adam, spsa, slsqp, l-bfgs-b
+    opt_circ = sgd :: str :: sgd, adam, spsa, cobyla, slsqp, l-bfgs-b
     #--------------------------------------------------------------------------
     # Gradient: Ground state only available
     #--------------------------------------------------------------------------
