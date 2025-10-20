@@ -137,6 +137,7 @@ pip install "jax~=0.6.0" "jaxlib~=0.6.0"
 pip install optax
 conda install -y psi4 -c conda-forge/label/libint_dev -c conda-forge
 pip install pynof
+pip install cma
 ```
 > :warning: **Note:** PennyLane is not yet compatible with JAX versions ≥ 0.7.0.
 > Make sure you install jax and jaxlib in the 0.6.x series.
