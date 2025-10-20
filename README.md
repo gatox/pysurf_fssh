@@ -130,7 +130,7 @@ The modularized version is **temporarily** hosted in the [NOFVQE_modular](https:
 PennyLane_Exercises/test_nof_vqe/NOFVQE/
 ```
 
-Please make sure it is installed and working before attempting this example. This includes installing pennylane, jax, optax, psi4 and [pynof](https://github.com/felipelewyee/PyNOF).
+Please make sure it is installed and working before attempting this example. This includes installing pennylane, jax, optax, psi4, [pynof](https://github.com/felipelewyee/PyNOF) and cma.
 ```bash
 pip install pennylane
 pip install "jax~=0.6.0" "jaxlib~=0.6.0"
