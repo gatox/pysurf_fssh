@@ -228,6 +228,7 @@ class BornOppenheimer:
             state.additional[self.save_properties] = self.get_save_properties(state.crd)
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
+        state.grad = grad[state.instate]
         return grad
 
     def new_surface(self, state, results, crd_new, t, dt):
@@ -240,6 +241,7 @@ class BornOppenheimer:
         state.ene = self.get_energy(crd_new)
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
+        state.grad = grad_new[state.instate]
         if state.save_properties: 
             state.additional[self.save_properties] = self.get_save_properties(crd_new)
         return grad_new
@@ -744,6 +746,7 @@ class SurfaceHopping(BornOppenheimer):
         ene_cou_grad = self.get_ene_cou_grad(state.crd, state.instate)
         propagator = Propagator(state)
         grad_old = propagator.grad(ene_cou_grad)
+        state.grad = grad_old[state.instate]
         state.ene = ene_cou_grad.ene
         state.epot = state.ene[state.instate]
         if self.coupling == "nacs":
@@ -850,6 +853,7 @@ class SurfaceHopping(BornOppenheimer):
         results.print_var(t, dt, sur_hop, state)  # printing variables
         if self.coupling == "non_coup" or self.coupling == "semi_coup":
             ene_cou_grad = self.get_ene_cou_grad(crd_new, state.instate)
+            state.grad = ene_cou_grad.grad[state.instate]
             return ene_cou_grad.grad
         state.u = ene_cou_grad.u
         propagator.new_ncoeff(state, grad_probs, sur_hop.hop, sur_hop.att, sur_hop.succ)
@@ -859,11 +863,13 @@ class SurfaceHopping(BornOppenheimer):
         elif self.coupling == "wf_overlap":
             state.vk = ene_cou_grad.wf_ov
         if old_state == sur_hop.state_new:
+            state.grad = grad_probs.grad_new[state.instate]
             return grad_probs.grad_new
         else:
             u_grad = self.get_hopp_u_grad(crd_new, state)
             propagator = Propagator(state)
             grad_new = propagator.new_hopp_grad(state, u_grad)
+            state.grad = grad_new[state.instate]
             return grad_new
 
 
@@ -1022,6 +1028,7 @@ class State(Colt):
         self.e_two_prev_steps = None
         self.ekin = 0
         self.epot = 0
+        self.grad =[]
         self.nac = {}
         self.ene = []
         self.vk = []
@@ -1188,6 +1195,7 @@ class PrintResults:
         nmodes = len(state.mass)
         prob = state.prob if state.method == "Surface_Hopping" else None
         save_properties = state.save_properties
+        nactive = int(state.instate)
         if isscalar(state.crd):
             natoms = 1
         else:
@@ -1201,21 +1209,23 @@ class PrintResults:
                     "ekin",
                     "epot",
                     "etot",
+                    "nacs",
                     "populations",
+                    "gradient",
                     "currstate",
                             ]  + save_properties
             if model:
                 db = PySurfDB.generate_database(
                     "results.db",
                     data=data,
-                    dimensions={"nmodes": nmodes, "nstates": nstates},
+                    dimensions={"nmodes": nmodes, "nstates": nstates, "nactive": nactive},
                     model=model,
                 )
             else:
                 db = PySurfDB.generate_database(
                     "results.db",
                     data=data,
-                    dimensions={"natoms": natoms, "nstates": nstates},
+                    dimensions={"natoms": natoms, "nstates": nstates, "nactive": nactive},
                     model=model,
                 )
         elif state.method == "Surface_Hopping" and prob in ("lz", "lz_nacs"):
@@ -1227,20 +1237,22 @@ class PrintResults:
                 "ekin",
                 "epot",
                 "etot",
+                "gradient",
+                "nacs",
                 "currstate",
                     ] + save_properties
             if model:
                 db = PySurfDB.generate_database(
                     "results.db",
                     data=data,
-                    dimensions={"nmodes": nmodes, "nstates": nstates},
+                    dimensions={"nmodes": nmodes, "nstates": nstates, "nactive": nactive},
                     model=model,
                 )
             else:
                 db = PySurfDB.generate_database(
                     "results.db",
                     data=data,
-                    dimensions={"natoms": natoms, "nstates": nstates},
+                    dimensions={"natoms": natoms, "nstates": nstates, "nactive": nactive},
                     model=model,
                 )
         elif state.method == "Born_Oppenheimer":
@@ -1251,25 +1263,64 @@ class PrintResults:
                 "time", 
                 "ekin", 
                 "epot", 
-                "etot"
+                "etot",
+                "gradient",
                 ] + save_properties
 
             db = PySurfDB.generate_database(
                 "results.db",
                 data=data,
-                dimensions={"natoms": natoms, "nstates": nstates},
+                dimensions={"natoms": natoms, "nstates": nstates, "nactive": nactive},
                 model=model,
             )
         else:
             raise ValueError("Could not open db")
         return db
     
+    def _save_nacs(self, state):
+        """
+        Convert state.nac (which may be a dict or array) into a 
+        consistent NumPy array suitable for writing to the database.
+
+        Supports:
+        - Model systems: (nstates, nstates, nmodes)
+        - Molecular systems: (nstates, nstates, natoms, 3)
+        """
+        model = state.model
+        nstates = state.nstates
+
+        # --- Handle NACs: convert dict -> numpy array if needed ---
+        if isinstance(state.nac, dict):
+            if model:
+                nmodes = len(state.mass)
+                nac_array = zeros((nstates, nstates, nmodes))
+                for i in range(nstates):
+                    for j in range(nstates):
+                        nac_array[i, j] = array(state.nac.get((i, j), zeros(nmodes)))
+            else:
+                natoms = state.natoms
+                nac_array = zeros((nstates, nstates, natoms, 3))
+                for i in range(nstates):
+                    for j in range(nstates):
+                        # Each NAC should be shape (natoms, 3)
+                        nac_ij = state.nac.get((i, j))
+                        if nac_ij is not None:
+                            nac_array[i, j] = array(nac_ij)
+                        else:
+                            nac_array[i, j] = zeros((natoms, 3))
+        else:
+            nac_array = array(state.nac)
+        return nac_array
+    
     def save_db(self, t, state):
         prob = state.prob if state.method == "Surface_Hopping" else None
         if state.method == "Surface_Hopping" and prob == "tully":
             self.db.set("currstate", state.instate)
             self.db.set("populations", self.norm_coeff(state.ncoeff))
+            self.db.set("nacs", self._save_nacs(state))
         elif state.method == "Surface_Hopping" and prob in ("lz", "lz_nacs"):
+            if prob == "lz_nacs":
+                self.db.set("nacs", self._save_nacs(state))
             self.db.set("currstate", state.instate)
         elif state.method == "Born_Oppenheimer":
             pass
@@ -1280,6 +1331,7 @@ class PrintResults:
         self.db.set("ekin", state.ekin)
         self.db.set("epot", state.epot)
         self.db.set("etot", state.ekin + state.epot)
+        self.db.set("gradient", state.grad)
         state.save_additional(self.db)
         self.db.increase  # It increases the frame
 

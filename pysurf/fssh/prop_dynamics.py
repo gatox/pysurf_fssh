@@ -159,6 +159,7 @@ class State(Colt):
         self.e_two_prev_steps = None
         self.ekin = 0
         self.epot = 0
+        self.grad = []
         self.nac = {}
         self.ene = []
         self.vk = []
