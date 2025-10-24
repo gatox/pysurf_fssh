@@ -29,15 +29,17 @@ from abc import abstractmethod
 from pysurf.spp import SurfacePointProvider
 from pysurf.database import PySurfDB
 from colt import Colt
+import os
 
 
 class VelocityVerletPropagator:
 
-    def __init__(self, state, spp=None):
+    def __init__(self, state, spp=None, restart=False):
         self.state = state
         self.t = self.state.t
         self.dt = self.state.dt
         self.t_max = self.dt * self.state.mdsteps
+        self.restart = restart
         self.results = PrintResults(state)
         if self.state.method == "Surface_Hopping":
             self.electronic = SurfaceHopping(self.state)
@@ -1170,6 +1172,72 @@ class State(Colt):
             substeps,
             thermostat,
         )
+    
+    @classmethod
+    def from_db_frame(cls, db_file, config_file="prop.inp"):
+        """
+        Reconstruct a State from the last frame of a results.db file.
+        Useful for restarting an interrupted trajectory.
+        """
+        if not os.path.exists(db_file):
+            raise FileNotFoundError(f"Database file {db_file} not found.")
+
+        # Load database and get last frame index
+        db = PySurfDB.load_database(db_file, read_only=True)
+        nframes = len(db["crd"])
+        if nframes == 0:
+            raise ValueError(f"No frames found in {db_file}")
+        last = nframes - 1
+
+        # --- Extract data from last frame ---
+        crd = copy(db["crd"][last])
+        vel = copy(db["veloc"][last])
+        grad = copy(db["gradient"][last]) if "gradient" in db else []
+        ene = copy(db["energy"][last]) if "energy" in db else []
+        nac = copy(db["nacs"][last]) if "nacs" in db else {}
+
+        # --- Extract static metadata ---
+        atomids = copy(db["atomids"])
+        mass = copy(db["masses"])
+        model = bool(copy(db["model"]))
+
+        # --- Reload configuration (prop.inp) ---
+        config = cls.from_questions(config=config_file)._config  # or however config is loaded
+
+        # --- Create new State ---
+        state = cls.from_initial(
+            config=config,
+            crd=crd,
+            vel=vel,
+            mass=mass,
+            atomids=atomids,
+            model=model,
+            t=db["time"][last],
+            dt=config["dt"],
+            mdsteps=config["mdsteps"],
+            instate=int(copy(db["currstate"][last])) if "currstate" in db else 0,
+            method=config["method"],
+            nstates=config.get("nstates", None),
+            states=config.get("states", None),
+            ncoeff=config.get("ncoeff", None),
+            prob=config.get("prob", None),
+            rescale_vel=config.get("rescale_vel", None),
+            rev_vel_no_hop=config.get("rev_vel_no_hop", None),
+            coupling=config.get("coupling", None),
+            decoherence=config.get("decoherence", None),
+            substeps=config.get("substeps", None),
+            thermostat=config.get("thermostat", None),
+        )
+
+        # --- Reattach dynamic properties ---
+        state.grad = grad
+        state.ene = ene
+        state.nac = nac
+        state.epot = float(copy(db["epot"][last]))
+        state.ekin = float(copy(db["ekin"][last]))
+
+        print(f"[Restart] Loaded frame {last} from {db_file} at t = {state.t}")
+        return state
 
 
 class PrintResults:
@@ -1179,7 +1247,14 @@ class PrintResults:
         self.large_bo = 108
         self.dash = "-" * self.large
         self.dash_bo = "-" * self.large_bo
-        self.gen_results = open("gen_results.out", "w")
+        #self.gen_results = open("gen_results.out", "w")
+        
+        # --- Open gen_results.out in append mode if restarting ---
+        if self.restart and os.path.exists("gen_results.out"):
+            self.gen_results = open("gen_results.out", "a")
+        else:
+            self.gen_results = open("gen_results.out", "w")
+        
         self.db = self._setup_db(state)
         self.hopping = []
         self.tra_time = time()
@@ -1410,6 +1485,8 @@ class PrintResults:
         )
 
     def print_head(self, state):
+        if self.restart:
+            return  # skip printing header on restart
         ack = self.print_acknowledgment(state)
         if state.method == "Surface_Hopping":
             self.gen_results.write(f"\n{ack.title:=^{self.large}}\n")
@@ -1447,7 +1524,6 @@ class PrintResults:
             self.gen_results.write(self.dash + "\n")
         elif state.method == "Born_Oppenheimer":
             inf_BO = self._read_spp_inf()
-            #self.t_crd_vel_ene_popu = open("t_crd_vel_ene_popu.csv", "w")
             self.gen_results.write(f"\n{ack.title:=^{self.large_bo}}\n")
             self.gen_results.write(f"\n{ack.based:^{self.large_bo}}\n")
             self.gen_results.write(f"{ack.actors:^{self.large_bo}}\n")
@@ -1484,10 +1560,6 @@ class PrintResults:
                 f"{head.etotal:>17s} {head.diff_etotal:>17s} {head.state:>4s} \n"
             )
             self.gen_results.write(self.dash_bo + "\n")
-            #self.t_crd_vel_ene_popu.write(
-            #    f"{head.t},{head.dis},{head.dis_vel},{head.ekin},"
-            #    f"{head.epot},{head.etotal},{head.state}\n"
-            #)
         self.gen_results.flush()
 
     def print_var(self, t, dt, sur_hop, state):
@@ -1542,10 +1614,6 @@ class PrintResults:
             f"{var.steps:>8.0f} {var.t:>12.2f} {var.ekin:>17.4f} {var.epot:>19.4f}"
             f"{var.etotal:>19.3f} {var.diff_etotal:>16.4f} {var.state:>10.0f}\n"
         )
-        #self.t_crd_vel_ene_popu.write(
-        #    f"{var.t:>0.3f},{var.dis:>0.8f},{var.dis_vel:>0.8f},"
-        #    f"{var.ekin:>0.8f},{var.epot:>0.8f},{var.etotal:>0.8f},{var.state:>0.0f}\n"
-        #)
         self.gen_results.flush()
 
     def print_bottom(self, state):
@@ -1564,10 +1632,8 @@ class PrintResults:
             else:
                 self.gen_results.write(f"No hoppings achieved\n")
         elif state.method == "Born_Oppenheimer":
-            #self.t_crd_vel_ene_popu.close()
             self.gen_results.write(self.dash_bo + "\n")
             self.gen_results.write(
-                #f"Some important variables are printed in t_crd_vel_ene_popu.csv and results.db\n"
                 f"Some important variables are printed in results.db\n"
             )
         time_seg = time() - self.tra_time
