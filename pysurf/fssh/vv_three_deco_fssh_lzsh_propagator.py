@@ -34,13 +34,13 @@ import os
 
 class VelocityVerletPropagator:
 
-    def __init__(self, state, spp=None, restart=False):
+    def __init__(self, state, spp=None, restart=True):
         self.state = state
         self.t = self.state.t
         self.dt = self.state.dt
         self.t_max = self.dt * self.state.mdsteps
         self.restart = restart
-        self.results = PrintResults(state)
+        self.results = PrintResults(state, restart)
         if self.state.method == "Surface_Hopping":
             self.electronic = SurfaceHopping(self.state)
             if self.state.ncoeff[self.state.instate] == 0:
@@ -1187,73 +1187,59 @@ class State(Colt):
         nframes = len(db["crd"])
         if nframes == 0:
             raise ValueError(f"No frames found in {db_file}")
-        last = nframes - 1
-
-        # --- Extract data from last frame ---
-        crd = copy(db["crd"][last])
-        vel = copy(db["veloc"][last])
-        grad = copy(db["gradient"][last]) if "gradient" in db else []
-        ene = copy(db["energy"][last]) if "energy" in db else []
-        nac = copy(db["nacs"][last]) if "nacs" in db else {}
-
-        # --- Extract static metadata ---
-        atomids = copy(db["atomids"])
-        mass = copy(db["masses"])
-        model = bool(copy(db["model"]))
+        last = int(nframes - 1)
 
         # --- Reload configuration (prop.inp) ---
-        config = cls.from_questions(config=config_file)._config  # or however config is loaded
+        state = cls.from_questions(config=config_file)  
+        mdsteps_conf = int(state.mdsteps)
+        if mdsteps_conf > last:
+            # --- Reattach dynamic properties ---
+            state.crd = copy(db["crd"][last])
+            state.vel = copy(db["veloc"][last])
+            state.grad = copy(db["gradient"][last]) if "gradient" in db else []
+            state.ene = copy(db["energy"][last]) if "energy" in db else []
+            state.t = float(copy(db["time"][last]))
+            state.instate = int(copy(db["currstate"][last]))
+            state.epot = float(copy(db["epot"][last]))
+            state.ekin = float(copy(db["ekin"][last]))
+            if state.method == "Surface_Hopping":
+                state.nac = copy(db["nacs"][last]) if "nacs" in db else {}
+                state.ncoeff = copy(db["populations"][last])
 
-        # --- Create new State ---
-        state = cls.from_initial(
-            config=config,
-            crd=crd,
-            vel=vel,
-            mass=mass,
-            atomids=atomids,
-            model=model,
-            t=db["time"][last],
-            dt=config["dt"],
-            mdsteps=config["mdsteps"],
-            instate=int(copy(db["currstate"][last])) if "currstate" in db else 0,
-            method=config["method"],
-            nstates=config.get("nstates", None),
-            states=config.get("states", None),
-            ncoeff=config.get("ncoeff", None),
-            prob=config.get("prob", None),
-            rescale_vel=config.get("rescale_vel", None),
-            rev_vel_no_hop=config.get("rev_vel_no_hop", None),
-            coupling=config.get("coupling", None),
-            decoherence=config.get("decoherence", None),
-            substeps=config.get("substeps", None),
-            thermostat=config.get("thermostat", None),
-        )
-
-        # --- Reattach dynamic properties ---
-        state.grad = grad
-        state.ene = ene
-        state.nac = nac
-        state.epot = float(copy(db["epot"][last]))
-        state.ekin = float(copy(db["ekin"][last]))
-
-        print(f"[Restart] Loaded frame {last} from {db_file} at t = {state.t}")
-        return state
-
+            print(f"[Restart] Loaded frame {last} from {db_file} at t = {state.t}")
+            return state
+        else:
+            raise SystemExit(f"Last md iteration from results.db is {last} and md_steps from prop.inp is {mdsteps_conf}, so no need to restart :)")
 
 class PrintResults:
 
-    def __init__(self, state):
+    def __init__(self, state, restart):
         self.large = 110
         self.large_bo = 108
         self.dash = "-" * self.large
         self.dash_bo = "-" * self.large_bo
+        self.restart = restart
+        self.skip_first_print_gen = restart #skip the first iteration only if restarting
+        self.skip_first_print_db = restart #skip the first iteration only if restarting
         #self.gen_results = open("gen_results.out", "w")
         
         # --- Open gen_results.out in append mode if restarting ---
         if self.restart and os.path.exists("gen_results.out"):
+            # Reopen file but remove the last footer block (lines with --- or "Total job time")
+            with open("gen_results.out", "r") as f:
+                lines = f.readlines()
+            # Find last header separator and trim everything after it
+            cutoff = len(lines)
+            for i, line in enumerate(reversed(lines)):
+                if "Total job time" in line or "Some important variables" in line:
+                    cutoff = len(lines) - i - 1
+                    break
+            with open("gen_results.out", "w") as f:
+                f.writelines(lines[:cutoff])
             self.gen_results = open("gen_results.out", "a")
         else:
             self.gen_results = open("gen_results.out", "w")
+
         
         self.db = self._setup_db(state)
         self.hopping = []
@@ -1388,6 +1374,10 @@ class PrintResults:
         return nac_array
     
     def save_db(self, t, state):
+        # --- Skip first iteration after restart ---
+        if self.skip_first_print_db:
+            self.skip_first_print_db = False  # only skip once
+            return
         prob = state.prob if state.method == "Surface_Hopping" else None
         if state.method == "Surface_Hopping" and prob == "tully":
             self.db.set("currstate", state.instate)
@@ -1486,6 +1476,7 @@ class PrintResults:
 
     def print_head(self, state):
         if self.restart:
+            self.instate = state.instate
             return  # skip printing header on restart
         ack = self.print_acknowledgment(state)
         if state.method == "Surface_Hopping":
@@ -1563,6 +1554,10 @@ class PrintResults:
         self.gen_results.flush()
 
     def print_var(self, t, dt, sur_hop, state):
+        # --- Skip first iteration after restart ---
+        if self.skip_first_print_gen:
+            self.skip_first_print_gen = False  # only skip once
+            return
         var = namedtuple("var", "steps t ekin epot etotal hopp random state")
         if state.prob == "tully":
             var = var(
@@ -1599,7 +1594,10 @@ class PrintResults:
         self.gen_results.flush()
 
     def print_bh_var(self, t, dt, state, etotal_0):
-        #var = namedtuple("var", "steps t dis dis_vel ekin epot etotal state")
+        # --- Skip first iteration after restart ---
+        if self.skip_first_print:
+            self.skip_first_print = False  # only skip once
+            return
         var = namedtuple("var", "steps t ekin epot etotal diff_etotal state")
         var = var(
             int(t / dt),

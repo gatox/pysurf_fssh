@@ -2,6 +2,7 @@ import numpy as np
 
 from ..database import PySurfDB
 from colt import Colt
+import os
 
 
 class State(Colt):
@@ -316,57 +317,29 @@ class State(Colt):
         nframes = len(db["crd"])
         if nframes == 0:
             raise ValueError(f"No frames found in {db_file}")
-        last = nframes - 1
-
-        # --- Extract data from last frame ---
-        crd = np.copy(db["crd"][last])
-        vel = np.copy(db["veloc"][last])
-        grad = np.copy(db["gradient"][last]) if "gradient" in db else []
-        ene = np.copy(db["energy"][last]) if "energy" in db else []
-        nac = np.copy(db["nacs"][last]) if "nacs" in db else {}
-
-        # --- Extract static metadata ---
-        atomids = np.copy(db["atomids"])
-        mass = np.copy(db["masses"])
-        model = bool(np.copy(db["model"]))
+        last = int(nframes - 1)
 
         # --- Reload configuration (prop.inp) ---
-        config = cls.from_questions(config=config_file)._config  # or however config is loaded
+        state = cls.from_questions(config=config_file)  
+        mdsteps_conf = int(state.mdsteps)
+        if mdsteps_conf > last:
+            # --- Reattach dynamic properties ---
+            state.crd = np.copy(db["crd"][last])
+            state.vel = np.copy(db["veloc"][last])
+            state.grad = np.copy(db["gradient"][last]) if "gradient" in db else []
+            state.ene = np.copy(db["energy"][last]) if "energy" in db else []
+            state.t = float(np.copy(db["time"][last]))
+            state.instate = int(np.copy(db["currstate"][last]))
+            state.epot = float(np.copy(db["epot"][last]))
+            state.ekin = float(np.copy(db["ekin"][last]))
+            if state.method == "Surface_Hopping":
+                state.nac = np.copy(db["nacs"][last]) if "nacs" in db else {}
+                state.ncoeff = np.copy(db["populations"][last])
 
-        # --- Create new State ---
-        state = cls.from_initial(
-            config=config,
-            crd=crd,
-            vel=vel,
-            mass=mass,
-            atomids=atomids,
-            model=model,
-            t=db["time"][last],
-            dt=config["dt"],
-            mdsteps=config["mdsteps"],
-            instate=int(np.copy(db["currstate"][last])) if "currstate" in db else 0,
-            method=config["method"],
-            nstates=config.get("nstates", None),
-            states=config.get("states", None),
-            ncoeff=config.get("ncoeff", None),
-            prob=config.get("prob", None),
-            rescale_vel=config.get("rescale_vel", None),
-            rev_vel_no_hop=config.get("rev_vel_no_hop", None),
-            coupling=config.get("coupling", None),
-            decoherence=config.get("decoherence", None),
-            substeps=config.get("substeps", None),
-            thermostat=config.get("thermostat", None),
-        )
-
-        # --- Reattach dynamic properties ---
-        state.grad = grad
-        state.ene = ene
-        state.nac = nac
-        state.epot = float(np.copy(db["epot"][last]))
-        state.ekin = float(np.copy(db["ekin"][last]))
-
-        print(f"[Restart] Loaded frame {last} from {db_file} at t = {state.t}")
-        return state
+            print(f"[Restart] Loaded frame {last} from {db_file} at t = {state.t}")
+            return state
+        else:
+            raise SystemExit(f"Last md iteration from results.db is {last} and md_steps from prop.inp is {mdsteps_conf}, so no need to restart :)")
 
 if __name__ == "__main__":
     State.from_questions(config="prop.inp")
