@@ -23,7 +23,8 @@ from numpy import (
     eye,
 )
 from random import uniform
-from time import time, ctime
+import time
+import shutil
 from collections import namedtuple
 from abc import abstractmethod
 from pysurf.spp import SurfacePointProvider
@@ -1242,7 +1243,7 @@ class PrintResults:
         
         self.db = self._setup_db(state)
         self.hopping = []
-        self.tra_time = time()
+        self.tra_time = time.time()
 
     def norm_coeff(self, ncoeff):
         if isinstance(ncoeff, ndarray) != True:
@@ -1373,12 +1374,21 @@ class PrintResults:
             nac_array = array(state.nac)
         return nac_array
     
-    def save_db(self, t, state):
+    def save_db(self, t, state, flush_every=1, backup_every=50):
+        """
+        Save results to results.db safely at each MD step.
+        
+        Features:
+        - Flushes buffered data every `flush_every` steps.
+        - Creates rolling backup snapshots every `backup_every` steps.
+        - Safe for remote (e.g., IBM Quantum) runs that may crash or disconnect.
+        """
         # --- Skip first iteration after restart ---
         if self.skip_first_print_db:
             self.skip_first_print_db = False  # only skip once
             return
         prob = state.prob if state.method == "Surface_Hopping" else None
+        # --- Write all relevant data ---
         if state.method == "Surface_Hopping" and prob == "tully":
             self.db.set("currstate", state.instate)
             self.db.set("populations", self.norm_coeff(state.ncoeff))
@@ -1389,6 +1399,7 @@ class PrintResults:
             self.db.set("currstate", state.instate)
         elif state.method == "Born_Oppenheimer":
             pass
+        # --- Common fields ---
         self.db.set("crd", state.crd)
         self.db.set("veloc", state.vel)
         self.db.set("energy", state.ene)
@@ -1397,8 +1408,43 @@ class PrintResults:
         self.db.set("epot", state.epot)
         self.db.set("etot", state.ekin + state.epot)
         self.db.set("gradient", state.grad)
-        state.save_additional(self.db)
-        self.db.increase  # It increases the frame
+
+        # Optional: any additional quantities the state wants to persist
+        if hasattr(state, "save_additional"):
+            state.save_additional(self.db)
+
+        # Increment frame counter
+        self.db.increase
+
+        try:
+            step = self.db.frame
+        except AttributeError:
+            step = int(t / state.dt)
+
+        # --- Safe flush: close and reopen cleanly ---
+        if step % flush_every == 0:
+            # --- Force flush before backup ---
+            try:
+                if hasattr(self.db, "_dataset") and self.db._dataset is not None:
+                    self.db._dataset.sync()
+                elif hasattr(self.db, "_ncid") and self.db._ncid is not None:
+                    self.db._ncid.sync()
+                import os
+                if hasattr(os, "sync"):
+                    os.sync()
+            except Exception as e:
+                print(f"[Warning] Could not flush NetCDF buffers before backup: {e}")
+
+            # --- Periodic backup snapshots ---
+            if step % backup_every == 0 and step != 0:
+                try:
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    backup_name = f"results_step{step}_{timestamp}.db.bak"
+                    shutil.copyfile("results.db", backup_name)
+                    print(f"[Backup created] {backup_name}")
+                except Exception as e:
+                    print(f"[Warning] Failed to create backup at step {step}: {e}")
+
 
     def dis_dimer(self, a, b):
         return sqrt(sum((a - b) ** 2))
@@ -1633,7 +1679,7 @@ class PrintResults:
             self.gen_results.write(
                 f"Some important variables are printed in results.db\n"
             )
-        time_seg = time() - self.tra_time
+        time_seg = time.time() - self.tra_time
         day = time_seg // (24 * 3600)
         time_seg = time_seg % (24 * 3600)
         hour = time_seg // 3600
@@ -1644,7 +1690,7 @@ class PrintResults:
         self.gen_results.write(
             f"Total job time: {day:>0.0f}:{hour:>0.0f}:{minutes:>0.0f}:{seconds:>0.0f}\n"
         )
-        self.gen_results.write(f"{ctime()}")
+        self.gen_results.write(f"{time.ctime()}")
         self.gen_results.close()
 
 
