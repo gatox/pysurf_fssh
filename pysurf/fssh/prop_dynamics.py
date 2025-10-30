@@ -329,10 +329,10 @@ class State(Colt):
             state.grad = np.copy(db["gradient"][last]) if "gradient" in db else []
             state.ene = np.copy(db["energy"][last]) if "energy" in db else []
             state.t = float(np.copy(db["time"][last]))
-            state.instate = int(np.copy(db["currstate"][last]))
             state.epot = float(np.copy(db["epot"][last]))
             state.ekin = float(np.copy(db["ekin"][last]))
             if state.method == "Surface_Hopping":
+                state.instate = int(np.copy(db["currstate"][last]))
                 state.nac = np.copy(db["nacs"][last]) if "nacs" in db else {}
                 state.ncoeff = np.copy(db["populations"][last])
 

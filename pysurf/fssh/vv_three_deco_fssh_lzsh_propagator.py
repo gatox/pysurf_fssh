@@ -1199,10 +1199,10 @@ class State(Colt):
             state.grad = copy(db["gradient"][last]) if "gradient" in db else []
             state.ene = copy(db["energy"][last]) if "energy" in db else []
             state.t = float(copy(db["time"][last]))
-            state.instate = int(copy(db["currstate"][last]))
             state.epot = float(copy(db["epot"][last]))
             state.ekin = float(copy(db["ekin"][last]))
             if state.method == "Surface_Hopping":
+                state.instate = int(copy(db["currstate"][last]))
                 state.nac = copy(db["nacs"][last]) if "nacs" in db else {}
                 state.ncoeff = copy(db["populations"][last])
 
@@ -1219,9 +1219,8 @@ class PrintResults:
         self.dash = "-" * self.large
         self.dash_bo = "-" * self.large_bo
         self.restart = restart
-        self.skip_first_print_gen = restart #skip the first iteration only if restarting
+        self.skip_first_print_gen = restart #skip the first iteration only if restarting 
         self.skip_first_print_db = restart #skip the first iteration only if restarting
-        #self.gen_results = open("gen_results.out", "w")
         
         # --- Open gen_results.out in append mode if restarting ---
         if self.restart and os.path.exists("gen_results.out"):
@@ -1317,6 +1316,7 @@ class PrintResults:
                     model=model,
                 )
         elif state.method == "Born_Oppenheimer":
+            nactive_bo = 1
             data=[
                 "crd", 
                 "veloc", 
@@ -1331,7 +1331,7 @@ class PrintResults:
             db = PySurfDB.generate_database(
                 "results.db",
                 data=data,
-                dimensions={"natoms": natoms, "nstates": nstates, "nactive": nactive},
+                dimensions={"natoms": natoms, "nstates": nstates, "nactive": nactive_bo},
                 model=model,
             )
         else:
@@ -1408,7 +1408,6 @@ class PrintResults:
         software_inf = None
         ipnof_inf = None
         for line in spp:
-            #if "software = IntPynof" in line:
             if "software = " in line:
                 software_inf = str(line.split()[2]) 
                 if software_inf == "IntPynof":
@@ -1595,8 +1594,8 @@ class PrintResults:
 
     def print_bh_var(self, t, dt, state, etotal_0):
         # --- Skip first iteration after restart ---
-        if self.skip_first_print:
-            self.skip_first_print = False  # only skip once
+        if self.skip_first_print_gen:
+            self.skip_first_print_gen = False  # only skip once
             return
         var = namedtuple("var", "steps t ekin epot etotal diff_etotal state")
         var = var(
@@ -1610,7 +1609,7 @@ class PrintResults:
         )
         self.gen_results.write(
             f"{var.steps:>8.0f} {var.t:>12.2f} {var.ekin:>17.4f} {var.epot:>19.4f}"
-            f"{var.etotal:>19.3f} {var.diff_etotal:>16.4f} {var.state:>10.0f}\n"
+            f"{var.etotal:>19.4f} {var.diff_etotal:>16.4f} {var.state:>10.0f}\n"
         )
         self.gen_results.flush()
 
