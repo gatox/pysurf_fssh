@@ -68,11 +68,15 @@ class IntNOFVQE(AbinitioBase):
     d_shift = 1.0e-3 :: float
     #--------------------------------------------------------------------------
     # Device: Note that the noise_simulator and real options only work with an
-    #         IBM account
+    #         IBM account. The hybrid option uses the simulator. When 
+    #         the optimal value is reached, the real QC recomputes it.
     #--------------------------------------------------------------------------
-    device = :: str :: simulator, noise_simulator, real
+    device = :: str :: simulator, noise_simulator, real, hybrid
     [device(simulator)]
     dev_simulator = True :: bool
+    #--------------------------------------------------------------------------
+    [device(hybrid)]
+    dev_hybrid = True :: bool
     #--------------------------------------------------------------------------
     [device(noise_simulator)]
     #--------------------------------------------------------------------------
