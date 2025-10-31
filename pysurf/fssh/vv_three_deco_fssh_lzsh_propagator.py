@@ -29,6 +29,7 @@ from collections import namedtuple
 from abc import abstractmethod
 from pysurf.spp import SurfacePointProvider
 from pysurf.database import PySurfDB
+from pysurf.database.dbtools import load_database
 from colt import Colt
 import os
 
@@ -1374,14 +1375,62 @@ class PrintResults:
             nac_array = array(state.nac)
         return nac_array
     
+    def safe_flush_and_backup(self, step, backup_every=50):
+        """Safely flush and back up the PySurfDB database without direct Dataset import."""
+
+        # --- Step 1: Ensure PySurfDB internal handle exists ---
+        if not hasattr(self.db, "_db") or self.db._db is None:
+            print(f"[Warning] No internal _db handle found at step {step}")
+            return
+
+        try:
+            # --- Step 2: Try to sync/flush buffers ---
+            try:
+                if hasattr(self.db._db, "sync"):
+                    self.db._db.sync()
+                elif hasattr(self.db._db, "flush"):
+                    self.db._db.flush()
+                print(f"[Sync] Database buffers flushed at step {step}")
+            except Exception as e:
+                print(f"[Warning] Could not sync database at step {step}: {e}")
+
+            # --- Step 3: Close gracefully if possible ---
+            try:
+                if hasattr(self.db._db, "close"):
+                    self.db._db.close()
+                    print(f"[Close] Database closed at step {step}")
+                self.db._db = None
+            except Exception as e:
+                print(f"[Warning] Could not close _db at step {step}: {e}")
+
+            # --- Step 4: Create periodic backup ---
+            if step % backup_every == 0 and step != 0:
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                backup_name = f"results_step{step}_{timestamp}.db.bak"
+                shutil.copyfile("results.db", backup_name)
+                print(f"[Backup created] {backup_name}")
+
+            # --- Step 5: Reopen database safely through PySurfDB ---
+            try:
+                self.db._db = load_database("results.db", io_options="a")
+                self.db._handle = self.db._db.variables
+                print(f"[Reopen] Database reopened (PySurfDB) at step {step}")
+            except Exception as e:
+                print(f"[Error] Failed to reopen PySurfDB at step {step}: {e}")
+
+        except Exception as e:
+            print(f"[Error] Safe flush/backup failed at step {step}: {e}")
+
+    
     def save_db(self, t, state, flush_every=1, backup_every=50):
         """
-        Save results to results.db safely at each MD step.
+        Safely save results to results.db at each MD step.
         
         Features:
-        - Flushes buffered data every `flush_every` steps.
-        - Creates rolling backup snapshots every `backup_every` steps.
-        - Safe for remote (e.g., IBM Quantum) runs that may crash or disconnect.
+        - Flushes data every `flush_every` steps (default = each iteration).
+        - Periodic backups every `backup_every` steps.
+        - Compatible with remote / quantum runs (e.g., IBM Q).
+        - Avoids double-closing issues from Python's garbage collector.
         """
         # --- Skip first iteration after restart ---
         if self.skip_first_print_db:
@@ -1413,37 +1462,26 @@ class PrintResults:
         if hasattr(state, "save_additional"):
             state.save_additional(self.db)
 
-        # Increment frame counter
-        self.db.increase
-
+        # --- Increment frame counter properly ---
         try:
-            step = self.db.frame
-        except AttributeError:
+            self.db.increase
+            step = self.db._icurrent or int(t / state.dt)
+        except Exception:
             step = int(t / state.dt)
 
-        # --- Safe flush: close and reopen cleanly ---
+        # --- Periodic flush ---
         if step % flush_every == 0:
-            # --- Force flush before backup ---
             try:
-                if hasattr(self.db, "_dataset") and self.db._dataset is not None:
-                    self.db._dataset.sync()
-                elif hasattr(self.db, "_ncid") and self.db._ncid is not None:
-                    self.db._ncid.sync()
-                import os
+                if hasattr(self.db, "_db") and self.db._db is not None:
+                    self.db._db.sync()
                 if hasattr(os, "sync"):
                     os.sync()
             except Exception as e:
-                print(f"[Warning] Could not flush NetCDF buffers before backup: {e}")
+                print(f"[Warning] Could not sync NetCDF buffers at step {step}: {e}")
 
-            # --- Periodic backup snapshots ---
-            if step % backup_every == 0 and step != 0:
-                try:
-                    timestamp = time.strftime("%Y%m%d_%H%M%S")
-                    backup_name = f"results_step{step}_{timestamp}.db.bak"
-                    shutil.copyfile("results.db", backup_name)
-                    print(f"[Backup created] {backup_name}")
-                except Exception as e:
-                    print(f"[Warning] Failed to create backup at step {step}: {e}")
+        # --- Backup with safe close/reopen ---
+        if step % backup_every == 0 and step != 0:
+            self.safe_flush_and_backup(step, backup_every)
 
 
     def dis_dimer(self, a, b):
