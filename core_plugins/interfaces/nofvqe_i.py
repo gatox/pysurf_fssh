@@ -76,7 +76,14 @@ class IntNOFVQE(AbinitioBase):
     dev_simulator = True :: bool
     #--------------------------------------------------------------------------
     [device(hybrid)]
-    dev_hybrid = True :: bool
+    #--------------------------------------------------------------------------
+    # Number of shots: Circuit measurements for expectation values.
+    # Optimization level: Degree of circuit transpilation.
+    # Resilience level: Degree of error mitigation.
+    #--------------------------------------------------------------------------
+    n_shots = 1000 :: int 
+    optimization_level = 0 :: int
+    resilience_level = 0 :: int
     #--------------------------------------------------------------------------
     [device(noise_simulator)]
     #--------------------------------------------------------------------------
@@ -87,6 +94,7 @@ class IntNOFVQE(AbinitioBase):
     n_shots = 1000 :: int 
     optimization_level = 0 :: int
     resilience_level = 0 :: int
+    #--------------------------------------------------------------------------
     [device(real)]
     #--------------------------------------------------------------------------
     # Number of shots: Circuit measurements for expectation values.
