@@ -107,7 +107,7 @@ class IntNOFVQE(AbinitioBase):
     """
     tpl = tpl
 
-    implemented = ['energy', 'gradient','parameter']
+    implemented = ['energy', 'gradient','parameter','rdm1_opt', 'n_opt', 'vecs_opt']
 
     def __init__(self, 
                  config, 
@@ -203,6 +203,12 @@ class IntNOFVQE(AbinitioBase):
             self._out_gradient(request)
         if 'parameter' in request:
             self._out_parameter(request)
+        if 'rdm1' in request:
+            self._out_rdm1(request)
+        if 'n' in request:
+            self._out_n(request)
+        if 'vecs' in request:
+            self._out_vecs(request)
         return request
 
     def _do_nofvqe_ene_grad(self):
@@ -225,10 +231,13 @@ class IntNOFVQE(AbinitioBase):
                       resilience_level=self.resilience_level,
                       )
         
-        E_min, params_opt, _, _, _, _, _ = nofvqe_class.ene_vqe()
+        E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.ene_vqe()
         self.init_param = params_opt
         """Saving energy and gradient for the ground state"""
         self.energy = E_min
+        self.rdm1_opt = rdm1_opt
+        self.n_opt = n_opt
+        self.vecs_opt = vecs_opt
         self.grad = nofvqe_class.grad()
 
     def _out_energy(self, request):
@@ -237,9 +246,24 @@ class IntNOFVQE(AbinitioBase):
         request.set('energy', out_ene)
 
     def _out_parameter(self, request):
-        """Energy of the ground state"""
+        """Optimal parameter"""
         out_parameter = self.init_param
         request.set('parameter', out_parameter)
+    
+    def _out_rdm1(self, request):
+        """Optimal rdm1"""
+        out_rdm1 = self.rdm1_opt
+        request.set('rdm1_opt', out_rdm1)
+
+    def _out_n(self, request):
+        """Optimal n"""
+        out_n = self.n_opt
+        request.set('n_opt', out_n)
+
+    def _out_vecs(self, request):
+        """Optimal vecs"""
+        out_vecs = self.vecs_opt
+        request.set('vecs_opt', out_vecs)
 
     def _out_gradient(self, request):
         """Gradientof the ground state"""
