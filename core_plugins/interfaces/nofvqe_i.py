@@ -203,11 +203,11 @@ class IntNOFVQE(AbinitioBase):
             self._out_gradient(request)
         if 'parameter' in request:
             self._out_parameter(request)
-        if 'rdm1' in request:
+        if 'rdm1_opt' in request:
             self._out_rdm1(request)
-        if 'n' in request:
+        if 'n_opt' in request:
             self._out_n(request)
-        if 'vecs' in request:
+        if 'vecs_opt' in request:
             self._out_vecs(request)
         return request
 

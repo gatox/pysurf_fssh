@@ -189,8 +189,7 @@ class BornOppenheimer:
         self.nstates = 1 # Pynof works only for G.S. Originaly: state.nstates
         self.natoms = state.natoms
         needed_properties = ["energy", "gradient"] + state.save_properties
-        if state.save_properties: 
-            self.save_properties = state.save_properties[0]
+
         if spp is None:
             self.spp = SurfacePointProvider.from_questions(
                 needed_properties,
@@ -212,9 +211,9 @@ class BornOppenheimer:
         result = self.spp.request(crd, ["energy"])
         return result["energy"]
 
-    def get_save_properties(self, crd):
-        result = self.spp.request(crd, [self.save_properties])
-        return result[self.save_properties]
+    def get_save_properties(self, crd, prop):
+        result = self.spp.request(crd, [prop])
+        return result[prop]
 
     def cal_ekin(self, mass, vel):
         ekin = 0
@@ -228,8 +227,6 @@ class BornOppenheimer:
     def setup(self, state):
         grad = self.get_gradient(state.crd, state.instate)
         state.ene = self.get_energy(state.crd)
-        if state.save_properties: 
-            state.additional[self.save_properties] = self.get_save_properties(state.crd)
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
         state.grad = grad[state.instate]
@@ -240,14 +237,17 @@ class BornOppenheimer:
         if self.icall == 0:
             self.ene_total_0  = state.ekin + state.epot
             self.icall = 1
+        if state.save_properties: 
+            for prop in state.save_properties:
+                state.additional[prop] = self.get_save_properties(state.crd, prop)
+            if "parameter" in state.save_properties:
+                state.nob_dim = len(state.additional["n_opt"])
         results.print_bh_var(t, dt, state, self.ene_total_0)  # printing variables
         results.save_db(t, state)  # save variables in database
         state.ene = self.get_energy(crd_new)
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
         state.grad = grad_new[state.instate]
-        if state.save_properties: 
-            state.additional[self.save_properties] = self.get_save_properties(crd_new)
         return grad_new
 
 
@@ -1030,6 +1030,7 @@ class State(Colt):
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
+        self.nob_dim = 0
         self.ekin = 0
         self.epot = 0
         self.grad =[]
@@ -1038,6 +1039,7 @@ class State(Colt):
         self.vk = []
         self.u = []
         self.rho = []
+        
         if isscalar(self.mass):
             self.natoms = 1
         elif isinstance(self.mass, ndarray) != True:
@@ -1056,6 +1058,8 @@ class State(Colt):
 
         if config["save_properties"] is not None:
             self.save_properties = [config["save_properties"]]
+            if config["save_properties"] == "parameter":
+                self.save_properties += ["rdm1_opt", "n_opt", "vecs_opt"]
         else:
             self.save_properties = []
 
@@ -1064,10 +1068,9 @@ class State(Colt):
     def save_additional(self, db):
         if not self.save_properties:
             return
-        #print("we are saving:", self.additional)
+        print("we are saving:", self.additional)
         for prop in self.save_properties:
-            if prop in self.additional:
-                db.set(prop, self.additional[prop])
+            db.set(prop, self.additional[prop])
 
 
     @classmethod
@@ -1329,11 +1332,17 @@ class PrintResults:
                 "etot",
                 "gradient",
                 ] + save_properties
+            if "parameter" in save_properties:
+                norb = state.nob_dim
+                norb_tri = norb*(norb +1)/2
+            else:
+                norb = None
+                norb_tri = None
 
             db = PySurfDB.generate_database(
                 "results.db",
                 data=data,
-                dimensions={"natoms": natoms, "nstates": nstates, "nactive": nactive_bo},
+                dimensions={"natoms": natoms, "nstates": nstates, "nactive": nactive_bo, "norb": norb, "norb_tri":norb_tri},
                 model=model,
             )
         else:

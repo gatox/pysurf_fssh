@@ -158,6 +158,7 @@ class State(Colt):
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
+        self.nob_dim = 0
         self.ekin = 0
         self.epot = 0
         self.grad = []
@@ -166,6 +167,7 @@ class State(Colt):
         self.vk = []
         self.u = []
         self.rho = []
+        
         if np.isscalar(self.mass):
             self.natoms = 1
         elif isinstance(self.mass, np.ndarray) != True:
@@ -184,6 +186,8 @@ class State(Colt):
 
         if config["save_properties"] is not None:
             self.save_properties = [config["save_properties"]]
+            if config["save_properties"] == "parameter":
+                self.save_properties += ["rdm1_opt", "n_opt", "vecs_opt"]
         else:
             self.save_properties = []
 
@@ -192,10 +196,9 @@ class State(Colt):
     def save_additional(self, db):
         if not self.save_properties:
             return
-        #print("we are saving:", self.additional)
+        print("we are saving:", self.additional)
         for prop in self.save_properties:
-            if prop in self.additional:
-                db.set(prop, self.additional[prop])
+            db.set(prop, self.additional[prop])
 
 
     @classmethod

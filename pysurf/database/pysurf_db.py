@@ -20,6 +20,8 @@ class PySurfDB(Database):
         "nstates": None,
         "nmodes": None,
         "nactive": None,
+        "norb": None,
+        "norb_tri": None,
         "three": 3,
         "one": 1,
     }
@@ -58,6 +60,9 @@ class PySurfDB(Database):
         nacs      = double :: (frame, nstates, nstates, natoms, three)
         sts_mom   = double :: (frame, nstates, nstates)
         parameter = double :: (frame, one)
+        rdm1_opt = double :: (frame, norb_tri)
+        n_opt = double :: (frame, norb)
+        vecs_opt = double :: (frame, norb, norb)
     """
     )["variables"]
 
