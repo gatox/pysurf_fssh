@@ -217,6 +217,18 @@ class PySurfDB(Database):
         if "nmodes" in self.dimensions:
             return self.dimensions["nmodes"]
         return None
+    
+    @cached_property
+    def norb(self):
+        if "norb" in self.dimensions:
+            return self.dimensions["norb"]
+        return None
+    
+    @cached_property
+    def norb_tri(self):
+        if "norb_tri" in self.dimensions:
+            return self.dimensions["norb_tri"]
+        return None
 
     @cached_property
     def model(self):

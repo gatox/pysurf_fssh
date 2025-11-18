@@ -38,17 +38,16 @@ class VelocityVerletPropagator:
 
     def __init__(self, state, spp=None, restart=True):
         self.state = state
-        self.t = self.state.t
-        self.dt = self.state.dt
-        self.t_max = self.dt * self.state.mdsteps
+        self.t = state.t
+        self.dt = state.dt
+        self.t_max = self.dt * state.mdsteps
         self.restart = restart
-        self.results = PrintResults(state, restart)
         if self.state.method == "Surface_Hopping":
-            self.electronic = SurfaceHopping(self.state)
-            if self.state.ncoeff[self.state.instate] == 0:
+            self.electronic = SurfaceHopping(state)
+            if self.state.ncoeff[state.instate] == 0:
                 raise SystemExit("Wrong population for initial state")
         elif self.state.method == "Born_Oppenheimer":
-            self.electronic = BornOppenheimer(self.state)
+            self.electronic = BornOppenheimer(state)
 
     def run(self, target_distance=None, atom_indices=(0, 1), monitor_distance=False):
         """
@@ -61,10 +60,10 @@ class VelocityVerletPropagator:
             monitor_distance (bool, optional): Check the distance between two atoms live. 
         """
         state = self.state
-        results = self.results
+        
         grad_old = self.electronic.setup(state)
         acce_old = self.accelerations(state, grad_old)
-
+        results = PrintResults(state, self.restart)
         results.print_head(state)
 
         # Main loop
@@ -106,7 +105,7 @@ class VelocityVerletPropagator:
     #        raise SystemExit("Noting to be done")
 
     #    state = self.state
-    #    results = self.results
+    #    results = PrintResults(state, self.restart)
     #    grad_old = self.electronic.setup(state)
     #    acce_old = self.accelerations(state, grad_old)
 
@@ -230,6 +229,11 @@ class BornOppenheimer:
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
         state.grad = grad[state.instate]
+        if state.save_properties: 
+            for prop in state.save_properties:
+                state.additional[prop] = self.get_save_properties(state.crd, prop)
+            if "parameter" in state.save_properties:
+                state.nob_dim = len(state.additional["n_opt"])
         return grad
 
     def new_surface(self, state, results, crd_new, t, dt):
@@ -240,14 +244,15 @@ class BornOppenheimer:
         if state.save_properties: 
             for prop in state.save_properties:
                 state.additional[prop] = self.get_save_properties(state.crd, prop)
-            if "parameter" in state.save_properties:
-                state.nob_dim = len(state.additional["n_opt"])
+        state.ekin = self.cal_ekin(state.mass, state.vel)
         results.print_bh_var(t, dt, state, self.ene_total_0)  # printing variables
         results.save_db(t, state)  # save variables in database
         state.ene = self.get_energy(crd_new)
         state.epot = state.ene
-        state.ekin = self.cal_ekin(state.mass, state.vel)
         state.grad = grad_new[state.instate]
+        if state.save_properties: 
+            for prop in state.save_properties:
+                state.additional[prop] = self.get_save_properties(crd_new, prop)
         return grad_new
 
 
@@ -1030,7 +1035,7 @@ class State(Colt):
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
-        self.nob_dim = 0
+        self.nob_dim = None
         self.ekin = 0
         self.epot = 0
         self.grad =[]
@@ -1321,8 +1326,8 @@ class PrintResults:
                     model=model,
                 )
         elif state.method == "Born_Oppenheimer":
-            nactive_bo = 1
-            data=[
+
+            data = [
                 "crd", 
                 "veloc", 
                 "energy", 
@@ -1331,20 +1336,39 @@ class PrintResults:
                 "epot", 
                 "etot",
                 "gradient",
-                ] + save_properties
-            if "parameter" in save_properties:
-                norb = state.nob_dim
-                norb_tri = norb*(norb +1)/2
+            ]
+
+            # Add ALL save properties
+            data += state.save_properties
+
+            # And compute norb, norb_tri if needed
+            if "parameter" in state.save_properties:
+                norb = int(state.nob_dim)
+                norb_tri = int(norb * (norb + 1) / 2)
             else:
                 norb = None
                 norb_tri = None
 
+            print("Edison_norb:", type(norb), norb)
+            print("Edison_norb_tri:", type(norb_tri), norb_tri)
+            print("Edison_natoms:",type(natoms),natoms)
+
+            # --- Fix dimensions here BEFORE passing to generate_database ---
+            dims = {
+                "natoms": natoms,
+                "nstates": nstates,
+                "nactive": 1,
+                "norb": norb,
+                "norb_tri": norb_tri,
+            }
+
             db = PySurfDB.generate_database(
                 "results.db",
                 data=data,
-                dimensions={"natoms": natoms, "nstates": nstates, "nactive": nactive_bo, "norb": norb, "norb_tri":norb_tri},
+                dimensions=dims,
                 model=model,
             )
+
         else:
             raise ValueError("Could not open db")
         return db
