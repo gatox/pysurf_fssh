@@ -154,6 +154,7 @@ class IntNOFVQE(AbinitioBase):
             self.resilience_level = config["device"]["resilience_level"]
         self.icall = 0
         self.count = 1
+        self.count_2 = 1
         self._last_crd = None
 
     @classmethod
@@ -195,8 +196,7 @@ class IntNOFVQE(AbinitioBase):
         # Check if coordinates are the same as last call
         if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
             self._do_nofvqe_ene_grad()
-            print(f"Get function is called {self.count} times")
-            self.count +=1
+            self.count_2 +=1
             self._last_crd = np.copy(request.crd)
 
         # Output requested properties
@@ -212,9 +212,11 @@ class IntNOFVQE(AbinitioBase):
             self._out_n(request)
         if 'vecs_opt' in request:
             self._out_vecs(request)
+            self.count +=1
         return request
 
     def _do_nofvqe_ene_grad(self):
+        print(f"Get function is called {self.count_2} times")
         string_geo = self.tpl.render(chg=self.chg, mult=self.mult,
                      mol=self.molecule)
             
@@ -244,31 +246,37 @@ class IntNOFVQE(AbinitioBase):
         self.grad = nofvqe_class.grad()
 
     def _out_energy(self, request):
+        print(f"Function energy is called {self.count} times")
         """Energy of the ground state"""
         out_ene = self.energy
         request.set('energy', out_ene)
 
     def _out_parameter(self, request):
+        print(f"Function parameter is called {self.count} times")
         """Optimal parameter"""
         out_parameter = self.init_param
         request.set('parameter', out_parameter)
     
     def _out_rdm1(self, request):
+        print(f"Function rmd1_opt is called {self.count} times")
         """Optimal rdm1"""
         out_rdm1 = self.rdm1_opt
         request.set('rdm1_opt', out_rdm1)
 
     def _out_n(self, request):
+        print(f"Function n_opt is called {self.count} times")
         """Optimal n"""
         out_n = self.n_opt
         request.set('n_opt', out_n)
 
     def _out_vecs(self, request):
+        print(f"Function vecs_opt is called {self.count} times")
         """Optimal vecs"""
         out_vecs = self.vecs_opt
         request.set('vecs_opt', out_vecs)
 
     def _out_gradient(self, request):
+        print(f"Function gradient is called {self.count} times")
         """Gradientof the ground state"""
         out_gradient = {}
         for state in request.states:

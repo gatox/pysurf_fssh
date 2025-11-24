@@ -224,8 +224,9 @@ class BornOppenheimer:
         return ekin
 
     def setup(self, state):
-        grad = self.get_gradient(state.crd, state.instate)
+        print("Setup is called")
         state.ene = self.get_energy(state.crd)
+        grad = self.get_gradient(state.crd, state.instate)
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
         state.grad = grad[state.instate]
@@ -237,6 +238,7 @@ class BornOppenheimer:
         return grad
 
     def new_surface(self, state, results, crd_new, t, dt):
+        print("New_surface is called")
         grad_new = self.get_gradient(crd_new, state.instate)
         if self.icall == 0:
             self.ene_total_0  = state.ekin + state.epot
@@ -245,8 +247,10 @@ class BornOppenheimer:
             for prop in state.save_properties:
                 state.additional[prop] = self.get_save_properties(state.crd, prop)
         state.ekin = self.cal_ekin(state.mass, state.vel)
-        results.print_bh_var(t, dt, state, self.ene_total_0)  # printing variables
-        results.save_db(t, state)  # save variables in database
+        # printing variables
+        results.print_bh_var(t, dt, state, self.ene_total_0)  
+        # save variables in database
+        results.save_db(t, state)  
         state.ene = self.get_energy(crd_new)
         state.epot = state.ene
         state.grad = grad_new[state.instate]
