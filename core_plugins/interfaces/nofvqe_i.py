@@ -153,6 +153,7 @@ class IntNOFVQE(AbinitioBase):
             self.optimization_level = config["device"]["optimization_level"]
             self.resilience_level = config["device"]["resilience_level"]
         self.icall = 0
+        self.count = 1
         self._last_crd = None
 
     @classmethod
@@ -194,6 +195,8 @@ class IntNOFVQE(AbinitioBase):
         # Check if coordinates are the same as last call
         if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
             self._do_nofvqe_ene_grad()
+            print(f"Get function is called {self.count} times")
+            self.count +=1
             self._last_crd = np.copy(request.crd)
 
         # Output requested properties
