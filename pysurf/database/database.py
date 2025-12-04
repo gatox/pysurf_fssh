@@ -143,5 +143,10 @@ class Database(object):
             variable[:] = value
 
     def __del__(self):
-        if self._closed is False:
-            self._db.close()
+        #if self._closed is False:
+        #    self._db.close()
+        try:
+            if self.ds is not None:
+                self.ds.close()
+        except Exception:
+            pass
