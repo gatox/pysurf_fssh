@@ -65,7 +65,18 @@ class VelocityVerletPropagator:
         acce_old = self.accelerations(state, grad_old)
         results = PrintResults(state, self.restart)
         results.print_head(state)
+        crd_Z = linalg.norm(state.crd[atom_indices[0]] - state.crd[atom_indices[1]])
+        vel_Z = linalg.norm(state.vel[atom_indices[0]] - state.vel[atom_indices[1]])
 
+        #crd_Z = state.crd[atom_indices[0]][2] - state.crd[atom_indices[1]][2]
+        #vel_Z = state.vel[atom_indices[0]][2] - state.vel[atom_indices[1]][2]
+        self.vel_pos = open("vel_pos.out", "w")
+        self.vel_pos.write(f"Time(a.u.), Position(a.u.), Velocity(a.u.)\n")
+        self.vel_pos.write(
+            f"{self.t:>8.3f} {crd_Z:>12.6f} {vel_Z:>15.6f}\n"
+        )
+
+        state.crd
         # Main loop
         while True:
             # positions
@@ -78,6 +89,13 @@ class VelocityVerletPropagator:
             # update state
             acce_old = self.update_state(state, acce_new, crd_new, vel_new)
             self.t += self.dt
+            crd_Zt = linalg.norm(crd_new[atom_indices[0]] - crd_new[atom_indices[1]])
+            vel_Zt = linalg.norm(vel_new[atom_indices[0]] - vel_new[atom_indices[1]])
+            #crd_Zt = crd_new[atom_indices[0]][2] - crd_new[atom_indices[1]][2]
+            #vel_Zt = vel_new[atom_indices[0]][2] - vel_new[atom_indices[1]][2]
+            self.vel_pos.write(
+            f"{self.t:>8.3f} {crd_Zt:>12.6f} {vel_Zt:>15.6f}\n"
+            )
 
             # Stopping criteria
             if target_distance is not None:
@@ -96,7 +114,7 @@ class VelocityVerletPropagator:
                 # Default: time-based stopping
                 if self.t > self.t_max:
                     break
-
+        self.vel_pos.close()
         results.print_bottom(state)
 
     #def run(self):
