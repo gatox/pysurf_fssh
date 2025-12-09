@@ -20,6 +20,7 @@ class PySurfDB(Database):
         "nstates": None,
         "nmodes": None,
         "nactive": None,
+        "params": None,
         "norb": None,
         "norb_tri": None,
         "three": 3,
@@ -43,7 +44,6 @@ class PySurfDB(Database):
         modes_equi= double :: (nmodes, natoms, three)
         masses    = double :: (natoms)
         model     = int    :: (one)
-
         crd       = double :: (frame, natoms, three)
         veloc     = double :: (frame, natoms, three)
         accel     = double :: (frame, natoms, three)
@@ -59,7 +59,7 @@ class PySurfDB(Database):
         etot      = double :: (frame, one)
         nacs      = double :: (frame, nstates, nstates, natoms, three)
         sts_mom   = double :: (frame, nstates, nstates)
-        parameter = double :: (frame, one)
+        parameter = double :: (frame, params)
         rdm1_opt = double :: (frame, norb_tri)
         n_opt = double :: (frame, norb)
         vecs_opt = double :: (frame, norb, norb)

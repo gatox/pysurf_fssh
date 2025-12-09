@@ -252,6 +252,7 @@ class BornOppenheimer:
             for prop in state.save_properties:
                 state.additional[prop] = self.get_save_properties(state.crd, prop)
             if "parameter" in state.save_properties:
+                state.params = len(state.additional["parameter"])
                 state.nob_dim = len(state.additional["n_opt"])
         return grad
 
@@ -1057,6 +1058,7 @@ class State(Colt):
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
+        self.params = None
         self.nob_dim = None
         self.ekin = 0
         self.epot = 0
@@ -1365,12 +1367,14 @@ class PrintResults:
 
             # And compute norb, norb_tri if needed
             if "parameter" in state.save_properties:
+                params = int(state.params)
                 norb = int(state.nob_dim)
                 norb_tri = int(norb * (norb + 1) / 2)
             else:
+                params = None
                 norb = None
                 norb_tri = None
-
+            print("Edison_params:", type(params), params)
             print("Edison_norb:", type(norb), norb)
             print("Edison_norb_tri:", type(norb_tri), norb_tri)
             print("Edison_natoms:",type(natoms),natoms)
@@ -1380,6 +1384,7 @@ class PrintResults:
                 "natoms": natoms,
                 "nstates": nstates,
                 "nactive": 1,
+                "params": params,
                 "norb": norb,
                 "norb_tri": norb_tri,
             }
