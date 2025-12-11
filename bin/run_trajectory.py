@@ -3,6 +3,9 @@ from pysurf.fssh import State, VelocityVerletPropagator
 from pathlib import Path
 
 
+import os
+path_test = "/Users/salazar/Desktop/new_test_nofvqe/h2_noisless/prop/traj_test"
+os.chdir(path)
 
 
 @from_commandline("""

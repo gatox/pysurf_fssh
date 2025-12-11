@@ -64,21 +64,19 @@ class VelocityVerletPropagator:
         grad_old = self.electronic.setup(state)
         acce_old = self.accelerations(state, grad_old)
         results = PrintResults(state, self.restart)
-        results.print_head(state)
-        crd_Z = linalg.norm(state.crd[atom_indices[0]] - state.crd[atom_indices[1]])
-        vel_Z = linalg.norm(state.vel[atom_indices[0]] - state.vel[atom_indices[1]])
+        results.print_head(state)        # printing variables
+        """First iteration about setup"""
+        # results.print_bh_var(self.t, self.dt, state, self.ene_total_0)  
+        # # save variables in database
+        # results.save_db(self.t, state)
+        ene_total_0 = state.ekin + state.epot
 
-        #crd_Z = state.crd[atom_indices[0]][2] - state.crd[atom_indices[1]][2]
-        #vel_Z = state.vel[atom_indices[0]][2] - state.vel[atom_indices[1]][2]
-        self.vel_pos = open("vel_pos.out", "w")
-        self.vel_pos.write(f"Time(a.u.), Position(a.u.), Velocity(a.u.)\n")
-        self.vel_pos.write(
-            f"{self.t:>8.3f} {crd_Z:>12.6f} {vel_Z:>15.6f}\n"
-        )
-
-        state.crd
         # Main loop
         while True:
+            if self.state.method == "Born_Oppenheimer":
+                # print results
+                results.print_bh_var(self.t, self.dt, state, ene_total_0)  
+                results.save_db(self.t, state)
             # positions
             crd_new = self.positions(state, acce_old, self.dt)
             # new forces
@@ -89,13 +87,6 @@ class VelocityVerletPropagator:
             # update state
             acce_old = self.update_state(state, acce_new, crd_new, vel_new)
             self.t += self.dt
-            crd_Zt = linalg.norm(crd_new[atom_indices[0]] - crd_new[atom_indices[1]])
-            vel_Zt = linalg.norm(vel_new[atom_indices[0]] - vel_new[atom_indices[1]])
-            #crd_Zt = crd_new[atom_indices[0]][2] - crd_new[atom_indices[1]][2]
-            #vel_Zt = vel_new[atom_indices[0]][2] - vel_new[atom_indices[1]][2]
-            self.vel_pos.write(
-            f"{self.t:>8.3f} {crd_Zt:>12.6f} {vel_Zt:>15.6f}\n"
-            )
 
             # Stopping criteria
             if target_distance is not None:
@@ -114,7 +105,6 @@ class VelocityVerletPropagator:
                 # Default: time-based stopping
                 if self.t > self.t_max:
                     break
-        self.vel_pos.close()
         results.print_bottom(state)
 
     #def run(self):
@@ -189,6 +179,15 @@ class VelocityVerletPropagator:
             return numerator / denominator
         else:
             return state.vel + 0.5 * (a_0 + a_1) * dt
+        
+    def cal_ekin(self, mass, vel):
+        ekin = 0
+        if isscalar(mass) and isscalar(vel):
+            ekin = 0.5 * mass * vel**2
+        else:
+            for i, m in enumerate(mass):
+                ekin += 0.5 * m * dot(vel[i], vel[i])
+        return ekin
 
     def update_state(self, state, acce_new, crd_new, vel_new):
         state.crd = crd_new
@@ -196,6 +195,7 @@ class VelocityVerletPropagator:
         state.e_two_prev_steps = state.e_prev_step
         state.e_prev_step = state.e_curr
         state.e_curr = state.ene
+        state.ekin = self.cal_ekin(state.mass, state.vel)
         acce_old = acce_new
         return acce_old
 
@@ -205,11 +205,11 @@ class BornOppenheimer:
     def __init__(self, state, spp=None):
         self.nstates = 1 # Pynof works only for G.S. Originaly: state.nstates
         self.natoms = state.natoms
-        needed_properties = ["energy", "gradient"] + state.save_properties
+        self.needed_properties = ["energy", "gradient"] + state.save_properties
 
         if spp is None:
             self.spp = SurfacePointProvider.from_questions(
-                needed_properties,
+                self.needed_properties,
                 nstates=self.nstates,
                 natoms=self.natoms,
                 config="spp.inp",
@@ -231,6 +231,11 @@ class BornOppenheimer:
     def get_save_properties(self, crd, prop):
         result = self.spp.request(crd, [prop])
         return result[prop]
+    
+    def compute(self, properties, crd, curr_state=None, same_crd=False):
+        if curr_state is None:
+            return self.spp.request(crd, properties, same_crd=same_crd)
+        return self.spp.request(crd, properties, states=[curr_state], same_crd=same_crd)
 
     def cal_ekin(self, mass, vel):
         ekin = 0
@@ -241,16 +246,33 @@ class BornOppenheimer:
                 ekin += 0.5 * m * dot(vel[i], vel[i])
         return ekin
 
+    # def setup(self, state):
+    #     print("Setup is called")
+    #     state.ene = self.get_energy(state.crd)
+    #     grad = self.get_gradient(state.crd, state.instate)
+    #     state.epot = state.ene
+    #     state.ekin = self.cal_ekin(state.mass, state.vel)
+    #     state.grad = grad[state.instate]
+    #     if state.save_properties: 
+    #         for prop in state.save_properties:
+    #             state.additional[prop] = self.get_save_properties(state.crd, prop)
+    #         if "parameter" in state.save_properties:
+    #             state.params = len(state.additional["parameter"])
+    #             state.nob_dim = len(state.additional["n_opt"])
+    #     return grad
+    
     def setup(self, state):
         print("Setup is called")
-        state.ene = self.get_energy(state.crd)
-        grad = self.get_gradient(state.crd, state.instate)
+        result = self.compute(self.needed_properties, state.crd, curr_state=state.instate)
+        state.ene = result['energy']
+        grad = result['gradient']
+        state.grad = grad[state.instate]
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
-        state.grad = grad[state.instate]
+        #self.ene_total_0  = state.ekin + state.epot
         if state.save_properties: 
             for prop in state.save_properties:
-                state.additional[prop] = self.get_save_properties(state.crd, prop)
+                state.additional[prop] = result[prop]
             if "parameter" in state.save_properties:
                 state.params = len(state.additional["parameter"])
                 state.nob_dim = len(state.additional["n_opt"])
@@ -258,24 +280,18 @@ class BornOppenheimer:
 
     def new_surface(self, state, results, crd_new, t, dt):
         print("New_surface is called")
-        grad_new = self.get_gradient(crd_new, state.instate)
-        if self.icall == 0:
-            self.ene_total_0  = state.ekin + state.epot
-            self.icall = 1
-        if state.save_properties: 
-            for prop in state.save_properties:
-                state.additional[prop] = self.get_save_properties(state.crd, prop)
-        state.ekin = self.cal_ekin(state.mass, state.vel)
-        # printing variables
-        results.print_bh_var(t, dt, state, self.ene_total_0)  
-        # save variables in database
-        results.save_db(t, state)  
-        state.ene = self.get_energy(crd_new)
+        result = self.compute(self.needed_properties, crd_new, curr_state=state.instate) 
+        # # print results
+        # print("Calling print_bh_var from new_surface:")
+        # results.print_bh_var(t, dt, state, self.ene_total_0)  
+        # results.save_db(t, state)
+        grad_new = result['gradient'] 
+        state.ene = result['energy']
         state.epot = state.ene
         state.grad = grad_new[state.instate]
         if state.save_properties: 
             for prop in state.save_properties:
-                state.additional[prop] = self.get_save_properties(crd_new, prop)
+                state.additional[prop] = result[prop]
         return grad_new
 
 
@@ -1517,7 +1533,7 @@ class PrintResults:
         self.db.set("epot", state.epot)
         self.db.set("etot", state.ekin + state.epot)
         self.db.set("gradient", state.grad)
-
+        print("Inside save_db:")
         # Optional: any additional quantities the state wants to persist
         if hasattr(state, "save_additional"):
             state.save_additional(self.db)

@@ -194,10 +194,12 @@ class IntNOFVQE(AbinitioBase):
         self.molecule.crd = request.crd
 
         # Check if coordinates are the same as last call
-        if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
-            self._do_nofvqe_ene_grad()
-            self.count_2 +=1
-            self._last_crd = np.copy(request.crd)
+        self._do_nofvqe_ene_grad()
+        self.count_2 +=1
+        # if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
+        #     self._do_nofvqe_ene_grad()
+        #     self.count_2 +=1
+        #     self._last_crd = np.copy(request.crd)
 
         # Output requested properties
         if 'energy' in request:
@@ -217,6 +219,7 @@ class IntNOFVQE(AbinitioBase):
 
     def _do_nofvqe_ene_grad(self):
         print(f"Get function is called {self.count_2} times")
+        print("Crd:", self.molecule.crd)
         string_geo = self.tpl.render(chg=self.chg, mult=self.mult,
                      mol=self.molecule)
             
@@ -238,6 +241,7 @@ class IntNOFVQE(AbinitioBase):
         
         E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.ene_vqe()
         self.init_param = params_opt
+        print("After called _do_nofvqe_ene_grad and computed params_opt:",self.init_param)
         """Saving energy and gradient for the ground state"""
         self.energy = E_min
         self.rdm1_opt = rdm1_opt
