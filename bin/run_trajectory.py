@@ -3,9 +3,9 @@ from pysurf.fssh import State, VelocityVerletPropagator
 from pathlib import Path
 
 
-import os
-path_test = "/Users/salazar/Desktop/new_test_nofvqe/h2_noisless/prop/traj_test"
-os.chdir(path)
+# import os
+# path_test = "/home/investigator/Desktop/NOFD_QC/test_nofvqe/test_20-11-2025_noisless/prop/test_nofvqe_11_12_2025"
+# os.chdir(path_test)
 
 
 @from_commandline("""
@@ -21,7 +21,7 @@ def command_run_trajectory(inputfile="prop.inp"):
         elec_state = State.from_questions(config=inputfile)
     DY = VelocityVerletPropagator(elec_state, restart=restart)
     try:
-        result_2 = DY.run()
+        DY.run()
     except SystemExit as err:
         print("An error:", err)
 

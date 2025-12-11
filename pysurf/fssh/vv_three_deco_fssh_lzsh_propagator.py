@@ -65,18 +65,9 @@ class VelocityVerletPropagator:
         acce_old = self.accelerations(state, grad_old)
         results = PrintResults(state, self.restart)
         results.print_head(state)        # printing variables
-        """First iteration about setup"""
-        # results.print_bh_var(self.t, self.dt, state, self.ene_total_0)  
-        # # save variables in database
-        # results.save_db(self.t, state)
-        ene_total_0 = state.ekin + state.epot
 
         # Main loop
         while True:
-            if self.state.method == "Born_Oppenheimer":
-                # print results
-                results.print_bh_var(self.t, self.dt, state, ene_total_0)  
-                results.save_db(self.t, state)
             # positions
             crd_new = self.positions(state, acce_old, self.dt)
             # new forces
@@ -106,32 +97,6 @@ class VelocityVerletPropagator:
                 if self.t > self.t_max:
                     break
         results.print_bottom(state)
-
-    #def run(self):
-
-    #    if self.t > self.t_max:
-    #        raise SystemExit("Noting to be done")
-
-    #    state = self.state
-    #    results = PrintResults(state, self.restart)
-    #    grad_old = self.electronic.setup(state)
-    #    acce_old = self.accelerations(state, grad_old)
-
-    #    results.print_head(state)
-    #    while self.t <= self.t_max:
-    #        """updating coordinates"""
-    #        crd_new = self.positions(state, acce_old, self.dt)
-    #        """updating accelerations"""
-    #        grad_new = self.electronic.new_surface(
-    #            state, results, crd_new, self.t, self.dt
-    #        )
-    #        acce_new = self.accelerations(state, grad_new)
-    #        """updating velocities"""
-    #        vel_new = self.velocities(state, acce_old, acce_new, self.dt)
-    #        """updating variables"""
-    #        acce_old = self.update_state(state, acce_new, crd_new, vel_new)
-    #        self.t += self.dt
-    #    results.print_bottom(state)
 
     def accelerations(self, state, grad):
         if isscalar(state.mass) and isscalar(grad[state.instate]):
@@ -195,7 +160,6 @@ class VelocityVerletPropagator:
         state.e_two_prev_steps = state.e_prev_step
         state.e_prev_step = state.e_curr
         state.e_curr = state.ene
-        state.ekin = self.cal_ekin(state.mass, state.vel)
         acce_old = acce_new
         return acce_old
 
@@ -245,21 +209,6 @@ class BornOppenheimer:
             for i, m in enumerate(mass):
                 ekin += 0.5 * m * dot(vel[i], vel[i])
         return ekin
-
-    # def setup(self, state):
-    #     print("Setup is called")
-    #     state.ene = self.get_energy(state.crd)
-    #     grad = self.get_gradient(state.crd, state.instate)
-    #     state.epot = state.ene
-    #     state.ekin = self.cal_ekin(state.mass, state.vel)
-    #     state.grad = grad[state.instate]
-    #     if state.save_properties: 
-    #         for prop in state.save_properties:
-    #             state.additional[prop] = self.get_save_properties(state.crd, prop)
-    #         if "parameter" in state.save_properties:
-    #             state.params = len(state.additional["parameter"])
-    #             state.nob_dim = len(state.additional["n_opt"])
-    #     return grad
     
     def setup(self, state):
         print("Setup is called")
@@ -269,7 +218,7 @@ class BornOppenheimer:
         state.grad = grad[state.instate]
         state.epot = state.ene
         state.ekin = self.cal_ekin(state.mass, state.vel)
-        #self.ene_total_0  = state.ekin + state.epot
+        self.ene_total_0  = state.ekin + state.epot
         if state.save_properties: 
             for prop in state.save_properties:
                 state.additional[prop] = result[prop]
@@ -279,12 +228,16 @@ class BornOppenheimer:
         return grad
 
     def new_surface(self, state, results, crd_new, t, dt):
-        print("New_surface is called")
-        result = self.compute(self.needed_properties, crd_new, curr_state=state.instate) 
-        # # print results
-        # print("Calling print_bh_var from new_surface:")
-        # results.print_bh_var(t, dt, state, self.ene_total_0)  
-        # results.save_db(t, state)
+        if self.icall == 0:
+            self.icall = 1
+        else:
+            state.ekin = self.cal_ekin(state.mass, state.vel)
+        # print results
+        print("Calling print_bh_var from new_surface:")
+        results.print_bh_var(t, dt, state, self.ene_total_0)  
+        results.save_db(t, state)
+        print("New_surface is calling compute from interface")
+        result = self.compute(self.needed_properties, crd_new, curr_state=state.instate)
         grad_new = result['gradient'] 
         state.ene = result['energy']
         state.epot = state.ene

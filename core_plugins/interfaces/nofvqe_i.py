@@ -152,10 +152,10 @@ class IntNOFVQE(AbinitioBase):
             self.n_shots = config["device"]["n_shots"]
             self.optimization_level = config["device"]["optimization_level"]
             self.resilience_level = config["device"]["resilience_level"]
-        self.icall = 0
+        self.icall_1 = 0
+        self.icall_2 = 0
         self.count = 1
         self.count_2 = 1
-        self._last_crd = None
 
     @classmethod
     def from_config(cls, 
@@ -184,22 +184,19 @@ class IntNOFVQE(AbinitioBase):
 
 
     def get(self, request):
-        if self.icall == 0:
+        if self.icall_1 == 0:
             self.C = None
-            self.icall = 1
+            self.icall_1 = 1
         else:
             self.C = "guest_C_MO"
 
         # Update coordinates
         self.molecule.crd = request.crd
 
-        # Check if coordinates are the same as last call
         self._do_nofvqe_ene_grad()
+
+
         self.count_2 +=1
-        # if self._last_crd is None or not np.allclose(self._last_crd, request.crd):
-        #     self._do_nofvqe_ene_grad()
-        #     self.count_2 +=1
-        #     self._last_crd = np.copy(request.crd)
 
         # Output requested properties
         if 'energy' in request:
@@ -240,7 +237,11 @@ class IntNOFVQE(AbinitioBase):
                       )
         
         E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.ene_vqe()
-        self.init_param = params_opt
+        self.params_opt = params_opt
+        if self.init_param is not None and np.allclose(self.init_param, params_opt):
+            self.init_param = None
+        else: 
+            self.init_param = params_opt
         print("After called _do_nofvqe_ene_grad and computed params_opt:",self.init_param)
         """Saving energy and gradient for the ground state"""
         self.energy = E_min
@@ -258,7 +259,7 @@ class IntNOFVQE(AbinitioBase):
     def _out_parameter(self, request):
         print(f"Function parameter is called {self.count} times")
         """Optimal parameter"""
-        out_parameter = self.init_param
+        out_parameter = self.params_opt
         request.set('parameter', out_parameter)
     
     def _out_rdm1(self, request):
