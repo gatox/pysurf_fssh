@@ -215,8 +215,8 @@ class IntNOFVQE(AbinitioBase):
         return request
 
     def _do_nofvqe_ene_grad(self):
-        print(f"Get function is called {self.count_2} times")
-        print("Crd:", self.molecule.crd)
+        print(f"nofvqe_i.py Get function is called {self.count_2} times")
+        print("nofvqe_i.py Crd:", self.molecule.crd)
         string_geo = self.tpl.render(chg=self.chg, mult=self.mult,
                      mol=self.molecule)
             
@@ -238,11 +238,8 @@ class IntNOFVQE(AbinitioBase):
         
         E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.ene_vqe()
         self.params_opt = params_opt
-        if self.init_param is not None and np.allclose(self.init_param, params_opt):
-            self.init_param = None
-        else: 
-            self.init_param = params_opt
-        print("After called _do_nofvqe_ene_grad and computed params_opt:",self.init_param)
+        self.init_param = params_opt
+        print("nofvqe_i.py After called _do_nofvqe_ene_grad and computed params_opt:",self.init_param)
         """Saving energy and gradient for the ground state"""
         self.energy = E_min
         self.rdm1_opt = rdm1_opt
@@ -251,37 +248,37 @@ class IntNOFVQE(AbinitioBase):
         self.grad = nofvqe_class.grad()
 
     def _out_energy(self, request):
-        print(f"Function energy is called {self.count} times")
+        print(f"nofvqe_i.py Function energy is called {self.count} times")
         """Energy of the ground state"""
         out_ene = self.energy
         request.set('energy', out_ene)
 
     def _out_parameter(self, request):
-        print(f"Function parameter is called {self.count} times")
+        print(f"nofvqe_i.py Function parameter is called {self.count} times")
         """Optimal parameter"""
         out_parameter = self.params_opt
         request.set('parameter', out_parameter)
     
     def _out_rdm1(self, request):
-        print(f"Function rmd1_opt is called {self.count} times")
+        print(f"nofvqe_i.py Function rmd1_opt is called {self.count} times")
         """Optimal rdm1"""
         out_rdm1 = self.rdm1_opt
         request.set('rdm1_opt', out_rdm1)
 
     def _out_n(self, request):
-        print(f"Function n_opt is called {self.count} times")
+        print(f"nofvqe_i.py Function n_opt is called {self.count} times")
         """Optimal n"""
         out_n = self.n_opt
         request.set('n_opt', out_n)
 
     def _out_vecs(self, request):
-        print(f"Function vecs_opt is called {self.count} times")
+        print(f"nofvqe_i.py Function vecs_opt is called {self.count} times")
         """Optimal vecs"""
         out_vecs = self.vecs_opt
         request.set('vecs_opt', out_vecs)
 
     def _out_gradient(self, request):
-        print(f"Function gradient is called {self.count} times")
+        print(f"nofvqe_i.py Function gradient is called {self.count} times")
         """Gradientof the ground state"""
         out_gradient = {}
         for state in request.states:

@@ -88,7 +88,6 @@ class PySurfDB(Database):
         epot      = double :: (frame, one)
         etot      = double :: (frame, one)
         nacs      = double :: (frame, nstates, nstates, nmodes)
-        parameter = double :: (frame, one)
     """
     )["variables"]
 

@@ -158,7 +158,8 @@ class State(Colt):
         self.e_curr = None
         self.e_prev_step = None
         self.e_two_prev_steps = None
-        self.nob_dim = 0
+        self.params = None
+        self.nob_dim = None
         self.ekin = 0
         self.epot = 0
         self.grad = []

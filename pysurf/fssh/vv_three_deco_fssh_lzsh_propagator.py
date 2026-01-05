@@ -1343,10 +1343,6 @@ class PrintResults:
                 params = None
                 norb = None
                 norb_tri = None
-            print("Edison_params:", type(params), params)
-            print("Edison_norb:", type(norb), norb)
-            print("Edison_norb_tri:", type(norb_tri), norb_tri)
-            print("Edison_natoms:",type(natoms),natoms)
 
             # --- Fix dimensions here BEFORE passing to generate_database ---
             dims = {
