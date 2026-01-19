@@ -32,7 +32,7 @@ class IntNOFVQE(AbinitioBase):
     #--------------------------------------------------------------------------
     # Basis set:
     #--------------------------------------------------------------------------
-    basis = sto-3g :: str :: cc-pvdz, sto-3g
+    basis = sto-3g :: str
     #--------------------------------------------------------------------------
     # Functional:
     #--------------------------------------------------------------------------
@@ -153,7 +153,6 @@ class IntNOFVQE(AbinitioBase):
             self.optimization_level = config["device"]["optimization_level"]
             self.resilience_level = config["device"]["resilience_level"]
         self.icall_1 = 0
-        self.icall_2 = 0
         self.count = 1
         self.count_2 = 1
 
@@ -185,10 +184,10 @@ class IntNOFVQE(AbinitioBase):
 
     def get(self, request):
         if self.icall_1 == 0:
-            self.C = None
+            self.C_called = None
             self.icall_1 = 1
         else:
-            self.C = "guest_C_MO"
+            self.C_called = "guest_C_MO"
 
         # Update coordinates
         self.molecule.crd = request.crd
@@ -229,7 +228,7 @@ class IntNOFVQE(AbinitioBase):
                       opt_circ=self.opt_circ,
                       gradient=self.gradient,
                       d_shift=self.d_shift,
-                      C_MO = self.C,
+                      C_MO = self.C_called,
                       dev=self.device,
                       n_shots=self.n_shots,
                       optimization_level=self.optimization_level,
