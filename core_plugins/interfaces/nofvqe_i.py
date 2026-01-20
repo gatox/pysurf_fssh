@@ -38,6 +38,10 @@ class IntNOFVQE(AbinitioBase):
     #--------------------------------------------------------------------------
     functional = pnof4 :: str :: ca, ml, gu, bbc2, bbac3, cga, pnof4, vqe
     #--------------------------------------------------------------------------
+    # Only Double pair:
+    #--------------------------------------------------------------------------
+    pair_double = False :: bool 
+    #--------------------------------------------------------------------------
     # Convergent tolerance:
     #--------------------------------------------------------------------------
     conv_tol = 1.0e-6 :: float 
@@ -121,6 +125,7 @@ class IntNOFVQE(AbinitioBase):
                  max_iterations,
                  opt_circ,
                  gradient,
+                 pair_double,
                  d_shift,
                  device,
                  n_shots,
@@ -139,6 +144,7 @@ class IntNOFVQE(AbinitioBase):
         self.max_iterations = max_iterations
         self.opt_circ = opt_circ
         self.gradient = gradient
+        self.pair_double=pair_double
         if self.gradient == "analytics":
             self.d_shift = None
         else:
@@ -174,6 +180,7 @@ class IntNOFVQE(AbinitioBase):
                    config['max_iterations'],
                    config['opt_circ'],
                    config['gradient'],
+                   config['pair_double'],
                    config.get("d_shift",None),
                    config['device'],
                    config.get("n_shots",None),
@@ -227,6 +234,7 @@ class IntNOFVQE(AbinitioBase):
                       max_iterations=self.max_iterations,
                       opt_circ=self.opt_circ,
                       gradient=self.gradient,
+                      pair_double=self.pair_double,
                       d_shift=self.d_shift,
                       C_MO = self.C_called,
                       dev=self.device,
@@ -234,8 +242,10 @@ class IntNOFVQE(AbinitioBase):
                       optimization_level=self.optimization_level,
                       resilience_level=self.resilience_level,
                       )
-        
-        E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.ene_vqe()
+        if self.pair_double:
+            E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.run_scnofvqe()
+        else:
+            E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.ene_vqe()
         self.params_opt = params_opt
         self.init_param = params_opt
         print("nofvqe_i.py After called _do_nofvqe_ene_grad and computed params_opt:",self.init_param)
