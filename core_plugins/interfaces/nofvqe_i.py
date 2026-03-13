@@ -32,11 +32,11 @@ class IntNOFVQE(AbinitioBase):
     #--------------------------------------------------------------------------
     # Basis set:
     #--------------------------------------------------------------------------
-    basis = sto-3g :: str
+    basis = sto-3g :: str :: sto-3g, 6-31G, cc-pVDZ
     #--------------------------------------------------------------------------
     # Functional:
     #--------------------------------------------------------------------------
-    functional = pnof4 :: str :: ca, ml, gu, bbc2, bbac3, cga, pnof4, vqe
+    functional = pnof4 :: str :: pnof4, pnof5, pnof7, pnof8, vqe
     #--------------------------------------------------------------------------
     # Only Double pair:
     #--------------------------------------------------------------------------
@@ -145,6 +145,7 @@ class IntNOFVQE(AbinitioBase):
         self.opt_circ = opt_circ
         self.gradient = gradient
         self.pair_double=pair_double
+        self.C_MO = None
         if self.gradient == "analytics":
             self.d_shift = None
         else:
@@ -158,7 +159,6 @@ class IntNOFVQE(AbinitioBase):
             self.n_shots = config["device"]["n_shots"]
             self.optimization_level = config["device"]["optimization_level"]
             self.resilience_level = config["device"]["resilience_level"]
-        self.icall_1 = 0
         self.count = 1
         self.count_2 = 1
 
@@ -190,12 +190,7 @@ class IntNOFVQE(AbinitioBase):
 
 
     def get(self, request):
-        if self.icall_1 == 0:
-            self.C_called = None
-            self.icall_1 = 1
-        else:
-            self.C_called = "guest_C_MO"
-
+        
         # Update coordinates
         self.molecule.crd = request.crd
 
@@ -242,19 +237,19 @@ class IntNOFVQE(AbinitioBase):
                       optimization_level=self.optimization_level,
                       resilience_level=self.resilience_level,
                       )
-        if self.pair_double:
-            E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.run_scnofvqe()
-        else:
-            E_min, params_opt, rdm1_opt, n_opt, vecs_opt, _, _ = nofvqe_class.ene_vqe()
+        E_min, params_opt, rdm1_opt, n_opt, vecs_opt, cj12, ck12, C_opt, elag = nofvqe_class.run_scnofvqe()
         self.params_opt = params_opt
         self.init_param = params_opt
+        self.C_MO = C_opt
+        
         print("nofvqe_i.py After called _do_nofvqe_ene_grad and computed params_opt:",self.init_param)
         """Saving energy and gradient for the ground state"""
         self.energy = E_min
         self.rdm1_opt = rdm1_opt
         self.n_opt = n_opt
         self.vecs_opt = vecs_opt
-        self.grad = nofvqe_class.grad()
+        #self.grad = nofvqe_class.grad()
+        self.grad = nofvqe_class._nuclear_gradient_analytics(n_opt,C_opt,cj12,ck12,elag)
 
     def _out_energy(self, request):
         print(f"nofvqe_i.py Function energy is called {self.count} times")
