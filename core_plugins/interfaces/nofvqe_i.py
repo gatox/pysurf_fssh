@@ -231,13 +231,14 @@ class IntNOFVQE(AbinitioBase):
                       gradient=self.gradient,
                       pair_double=self.pair_double,
                       d_shift=self.d_shift,
-                      C_MO = self.C_called,
+                      C_MO = self.C_MO,
                       dev=self.device,
                       n_shots=self.n_shots,
                       optimization_level=self.optimization_level,
                       resilience_level=self.resilience_level,
                       )
         E_min, params_opt, rdm1_opt, n_opt, vecs_opt, cj12, ck12, C_opt, elag = nofvqe_class.run_scnofvqe()
+        # Saving optimal variables for the next iteration
         self.params_opt = params_opt
         self.init_param = params_opt
         self.C_MO = C_opt
