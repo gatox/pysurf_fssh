@@ -22,7 +22,7 @@ class PySurfDB(Database):
         "nactive": None,
         "params": None,
         "norb": None,
-        "norb_tri": None,
+        #"norb_tri": None,
         "three": 3,
         "one": 1,
     }
@@ -60,7 +60,7 @@ class PySurfDB(Database):
         nacs      = double :: (frame, nstates, nstates, natoms, three)
         sts_mom   = double :: (frame, nstates, nstates)
         parameter = double :: (frame, params)
-        rdm1_opt = double :: (frame, norb_tri)
+        rdm1_opt = double :: (frame, norb, norb)
         n_opt = double :: (frame, norb)
         vecs_opt = double :: (frame, norb, norb)
     """
@@ -223,11 +223,11 @@ class PySurfDB(Database):
             return self.dimensions["norb"]
         return None
     
-    @cached_property
-    def norb_tri(self):
-        if "norb_tri" in self.dimensions:
-            return self.dimensions["norb_tri"]
-        return None
+    # @cached_property
+    # def norb_tri(self):
+    #     if "norb_tri" in self.dimensions:
+    #         return self.dimensions["norb_tri"]
+    #     return None
 
     @cached_property
     def model(self):

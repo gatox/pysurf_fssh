@@ -1338,11 +1338,11 @@ class PrintResults:
             if "parameter" in state.save_properties:
                 params = int(state.params)
                 norb = int(state.nob_dim)
-                norb_tri = int(norb * (norb + 1) / 2)
+                #norb_tri = int(norb * (norb + 1) / 2)
             else:
                 params = None
                 norb = None
-                norb_tri = None
+                #norb_tri = None
 
             # --- Fix dimensions here BEFORE passing to generate_database ---
             dims = {
@@ -1351,7 +1351,7 @@ class PrintResults:
                 "nactive": 1,
                 "params": params,
                 "norb": norb,
-                "norb_tri": norb_tri,
+                #"norb_tri": norb_tri,
             }
 
             db = PySurfDB.generate_database(
