@@ -72,14 +72,25 @@ class IntNOFVQE(AbinitioBase):
     d_shift = 1.0e-3 :: float
     #--------------------------------------------------------------------------
     # Device: Note that the noise_simulator and real options only work with an
-    #         IBM account. The hybrid option uses the simulator. When 
-    #         the optimal value is reached, the real QC recomputes it.
+    #         IBM account. The hybrid options use the simulator. When 
+    #         the optimal value is reached, the real QC or noise_simulator
+    #         recomputes it.
     #--------------------------------------------------------------------------
-    device = :: str :: simulator, noise_simulator, real, hybrid
+    device = :: str :: simulator, noise_simulator, real, hybrid_real, hybrid_noise_simulator
     [device(simulator)]
     dev_simulator = True :: bool
     #--------------------------------------------------------------------------
-    [device(hybrid)]
+    [device(hybrid_real)]
+    #--------------------------------------------------------------------------
+    # Number of shots: Circuit measurements for expectation values.
+    # Optimization level: Degree of circuit transpilation.
+    # Resilience level: Degree of error mitigation.
+    #--------------------------------------------------------------------------
+    n_shots = 1000 :: int 
+    optimization_level = 0 :: int
+    resilience_level = 0 :: int
+    #--------------------------------------------------------------------------
+    [device(hybrid_noise_simulator)]
     #--------------------------------------------------------------------------
     # Number of shots: Circuit measurements for expectation values.
     # Optimization level: Degree of circuit transpilation.
