@@ -248,7 +248,7 @@ class IntNOFVQE(AbinitioBase):
                       optimization_level=self.optimization_level,
                       resilience_level=self.resilience_level,
                       )
-        E_min, params_opt, rdm1_opt, n_opt, vecs_opt, cj12, ck12, C_opt, elag = nofvqe_class.run_scnofvqe()
+        E_min, params_opt, rdm1_opt, n_opt, vecs_opt, cj12, ck12, C_opt, elag = nofvqe_class.run_nofvqe()
         # Saving optimal variables for the next iteration
         self.params_opt = params_opt
         self.init_param = params_opt
